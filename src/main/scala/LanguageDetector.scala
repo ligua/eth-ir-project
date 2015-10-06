@@ -7,7 +7,7 @@ object LanguageDetector {
 
   type Model = Map[String, Double]
 
-  var models = Array("en", "de").map(lang => (lang, readModel(lang))).toMap
+  val models = Array("en", "de").map(lang => (lang, readModel(lang))).toMap
 
 
   /** Read in models */
