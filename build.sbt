@@ -1,4 +1,4 @@
 lazy val root = (project in file(".")).
   settings(
-    name := "Group 31 web crawler"
+    name := "Group 21 web crawler"
   )
