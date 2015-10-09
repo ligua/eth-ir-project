@@ -9,6 +9,10 @@ object LanguageDetector {
 
   val models = Array("en", "de").map(lang => (lang, readModel(lang))).toMap
 
+  /** Tokenize a document for language detection */
+  def tokenize(doc: String): Iterator[String] = {
+    doc.toLowerCase().replaceAll("\\s", " ").replaceAll("[^a-z -]", "").sliding(3)
+  }
 
   /** Read in models */
   def readModel(lang: String): Model = {
@@ -24,7 +28,7 @@ object LanguageDetector {
 
     // Calculate ngram frequencies
     val result = MutMap[String,Int]()
-    for (ngram <- Tokenizer.tokenize(doc)) {
+    for (ngram <- tokenize(doc)) {
       result(ngram) = result.getOrElse(ngram,0) + 1
     }
 
