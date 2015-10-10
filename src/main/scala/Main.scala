@@ -1,4 +1,4 @@
-package Main.scala
+package main.scala
 
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
