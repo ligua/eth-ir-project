@@ -97,7 +97,7 @@ object SimilarityDetector {
 
   /** Tokenize a document for similarity detection */
   private def tokenize(doc: String): List[Token] = {
-    doc.split("[ .,;:?!\t\n\r\f]+").toList
+    doc.toLowerCase.split("[ .,;:?!\t\n\r\f]+").toList
   }
 
   /** Create q-length shingles from a list of tokens */
