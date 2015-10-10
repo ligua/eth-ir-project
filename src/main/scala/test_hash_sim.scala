@@ -11,7 +11,11 @@ object test_hash_sim {
     
     var x = ss.isSimilarOrDuplicate("Are the variables mutable in Java? If yes (else they should be final in Java): Would it make sense to make them immutable in Scala?")
     println(x)
-    
+
+    x = ss.isSimilarOrDuplicate("Are the variables orr mutable in Java? If yes (else they should be final in Java): Would it make sense to make them immutable in Scala?")
+    println(x)
+
+
     x = ss.isSimilarOrDuplicate("Are the variables orr mutable in Java? If yes (else they should be final in Java): Would it make sense to make them immutable in Scala?")
     println(x)
     
@@ -26,6 +30,5 @@ object test_hash_sim {
     
     x = ss.isSimilarOrDuplicate("Shakespeare produced most of his work after 1589")
     println(x)
-    
   }
 }

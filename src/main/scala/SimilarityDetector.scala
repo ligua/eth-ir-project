@@ -11,17 +11,18 @@ object SimilarityDetector {
   private type Token = String
   private type Fingerprint = String
   private type PermutationTable = List[String]  // This list contains all the fingerprints of all documents we have
-                                                // stored so far in a given permutation.   
+                                                // stored so far in a given permutation.
   private type Permutation = Seq[Int]
 
-  private val maxBitsToCompare = 10   // How many bits we will compare in each permutation
-  private val numPermutations = 100    // Number of random permutations of fingerprint bits (k on lecture slides) we will use
+  private val maxBitsToCompare = 10       // How many bits we will compare in each permutation
+  private val numPermutations = 100       // Number of random permutations of fingerprint bits (k on lecture slides) we will use
   private val wordsPerShingle = 3
+  private val nearDuplicateLimit = 0.9    // Minimum similarity between 2 documents to consider them near duplicates
   
   // Initialise fingerprints tables and permutations
   private var fingerprintTables = List.fill(numPermutations)(List[String]()) // contains numPermutations of PermutationTable
   private var permutations = List[Permutation]()
-  
+
   for(i <- 1 to numPermutations) {
     // Create random permutation and remember it
     val perm = Random.shuffle(0 to 31).toList  // Using 0 to 31 because they are indexes of a 32-char string
@@ -32,54 +33,41 @@ object SimilarityDetector {
   /** Detect if given document is similar to or duplicate of some document we've already seen.
     * This is the function that will be called from inside the crawler */
   def isSimilarOrDuplicate(queryDoc: String): (Boolean, Boolean) = {
+
     val shingles = shingle(tokenize(queryDoc), wordsPerShingle)
     val fingerprint = shinglesToFingerprint(shingles)
-    
-    println(shingles)
-    
+
     /* this will be a list of number of times (out of the numPermutations) our query document had the same top bits
      * for each of the documents we stored so far
      */
     var numOfSimilarity = List.fill(fingerprintTables(0).size)(0);
-    
+
     var queryDocPermutations = List[Fingerprint]()
+
+    var isExactDuplicate = false
+    var isNearDuplicate = false
     
     for(i <- 0 to numPermutations-1) {
-      // Permute the fingerprint with the i-th permutation and get the i-th permutation table
+      // Permute the fingerprint with the i-th permutation
       val perm = permutations(i)
-      val reordered = reorderFingerprint(fingerprint, perm).take(maxBitsToCompare)
-      
+      val reordered = reorderFingerprint(fingerprint, perm)
+
+      // Remember permuted string so we can add it to the right table later
       // take care ":+" appends element to the end of the list
       //           "+:" prepends element to the list (put the element at the head of the list)
       queryDocPermutations = queryDocPermutations.:+(reordered)
-      
-      val table = fingerprintTables(i)
 
-      val boolTable  = hasSimilarTopBitsInTable(reordered, table)
-      
-      numOfSimilarity = (numOfSimilarity.zip(boolTable)).map{case(x,y) => if (y) x+1 else x}
+      // Find all candidate fingerprints in this table that have same top bits
+      val table = fingerprintTables(i)
+      val candidates = hasSameTopBitsInTable(reordered, table)
+
+      // Calculate similarities with all candidates and update near/exact duplicate existence
+      val similarities = candidates.map(x => hammingSimilarity(x, reordered))
+      isExactDuplicate = isExactDuplicate || similarities.exists(x => x == 1.0)
+      isNearDuplicate = isNearDuplicate || similarities.exists(x => nearDuplicateLimit <= x && x < 1.0)
+
     }
-    
-    numOfSimilarity = numOfSimilarity.map(_*100/numPermutations)
-    println(numOfSimilarity)
-    
-    var maxPercentageSimilarity = 0
-    
-    if(!numOfSimilarity.isEmpty)
-      maxPercentageSimilarity = numOfSimilarity.max
-    
-    var isExactDuplicate = false;
-    var isNearDuplicate = false;
-    
-    if(maxPercentageSimilarity == 100)
-    {
-      isExactDuplicate = true;
-    }
-    
-    if(maxPercentageSimilarity > 60)
-    {
-      isNearDuplicate = true;
-    }
+
 
     if(!isExactDuplicate) {
       fingerprintTables = (fingerprintTables.zip(queryDocPermutations)).map{case(x,y) => x.:+(y)}
@@ -88,13 +76,10 @@ object SimilarityDetector {
     return (isExactDuplicate, isNearDuplicate)
   }
 
-  /** Check if given fingerprint table has anything that matches the given fingerprint a) exactly or b) with similarity >0.9 */
-  private def hasSimilarTopBitsInTable(fp: Fingerprint, table: PermutationTable): List[Boolean] = {
-    // TODO
-    
-    val topBitsToCompare = fp
-    
-    table.map { fpStore  => (fpStore == topBitsToCompare) }
+  /** Check if given fingerprint table has anything that matches the given fingerprint in top 'maxBitsToCompare' bits */
+  private def hasSameTopBitsInTable(fp: Fingerprint, table: PermutationTable): List[String] = {
+
+    table.filter { fpStore  => (fpStore.take(maxBitsToCompare) == fp.take(maxBitsToCompare)) }
   }
 
   /** Reorder given fingerprint according to the given permutation */
@@ -144,10 +129,14 @@ object SimilarityDetector {
 
     fingerprint = fingerprint.map(x => if(x <= 0) 0 else 1) // convert back to binary
 
-    println(fingerprint.mkString)
-    
     fingerprint.mkString
     
+  }
+
+
+  /** Calculate the proportion of positions where s1 and s2 have equal characters */
+  private def hammingSimilarity(s1: Fingerprint, s2: Fingerprint): Double = {
+    s1.zip(s2).map{case (a, b) => if(a == b) 1 else 0}.sum.toDouble / s1.length
   }
 
 
