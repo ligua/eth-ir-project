@@ -7,6 +7,8 @@ import scala.runtime.Tuple2Zipped
 
 object SimilarityDetector {
 
+  val mainObject = Main_Object
+  
   private type Shingle = List[String]
   private type Token = String
   private type Fingerprint = String
@@ -16,12 +18,18 @@ object SimilarityDetector {
 
   private val maxBitsToCompare = 10       // How many bits we will compare in each permutation
   private val numPermutations = 100       // Number of random permutations of fingerprint bits (k on lecture slides) we will use
-  private val wordsPerShingle = 3
+  private val wordsPerShingle = 2
   private val nearDuplicateLimit = 0.9    // Minimum similarity between 2 documents to consider them near duplicates
+  private val jaccardNearDuplicateLimit = 0.7
   private val collisionLimit = 1          // How many tables should give a collision so we would consider a candidate
+  
+  private var numOfExactDuplicates = 0
+  private var numOfNearDuplicates = 0
   
   // Initialise fingerprints tables and permutations
   private var fingerprintTables = List.fill(numPermutations)(List[String]()) // contains numPermutations of PermutationTable
+  private var urlsSaved = List[String]()
+  
   private var permutations = List[Permutation]()
 
   for(i <- 1 to numPermutations) {
@@ -33,9 +41,10 @@ object SimilarityDetector {
 
   /** Detect if given document is similar to or duplicate of some document we've already seen.
     * This is the function that will be called from inside the crawler */
-  def isSimilarOrDuplicate(queryDoc: String): (Boolean, Boolean) = {
+  def isSimilarOrDuplicate(queryDoc: String, url: String): (Boolean, Boolean) = {
 
     val shingles = shingle(tokenize(queryDoc), wordsPerShingle)
+    //println(shingles)
     val fingerprint = shinglesToFingerprint(shingles)
 
     /* this will be a list of number of times (out of the numPermutations) our query document had the same top bits
@@ -63,21 +72,43 @@ object SimilarityDetector {
     }
 
     // Get all candidates (from permutation 0)
-    val candidates = fingerprintTables(0).zip(numOfSimilarity)
-      .filter{case(_, count) => count >= collisionLimit}
-      .map{case(fp, _) => fp}
+    val candidates = (urlsSaved, fingerprintTables(0), numOfSimilarity).zipped.toList
+      .filter{case(_, _, count) => count >= collisionLimit}
+      .map{case(u, fp, _) => (u,fp)}
 
     // Get our query string (from permutation 0)
-    val reordered0 = reorderFingerprint(fingerprint, permutations(0))
+    val reordered0 = queryDocPermutations(0)
 
     // Calculate similarities with all candidates
-    val similarities = candidates.map(x => hammingSimilarity(x, reordered0))
-    val isExactDuplicate = similarities.exists(x => x == 1.0)
-    val isNearDuplicate = similarities.exists(x => nearDuplicateLimit <= x && x < 1.0)
-
+    val similarities = candidates.map{ case(u, fp) => (u,hammingSimilarity(fp, reordered0))}
+    
+    val maxSim = if(similarities.isEmpty) ("",0.0) else similarities.maxBy(_._2)
+    
+    var isExactDuplicate = (maxSim._2 == 1.0)
+    var isNearDuplicate = (maxSim._2 >= nearDuplicateLimit && maxSim._2 < 1.0)
+    
+    if(isExactDuplicate) 
+    {
+      println("EXACT: \n" + url + "\n" + maxSim._1 +"\n"+maxSim._2)  
+      numOfExactDuplicates = numOfExactDuplicates + 1
+    }
+    
+    if(isNearDuplicate)
+    {
+      val candidateURLsForJaccard = similarities.filter(_._2 > nearDuplicateLimit).map{x => x._1}
+    
+      val checkJaccard = getJaccardSimilarity(url, candidateURLsForJaccard)
+      
+      if(checkJaccard._2 > jaccardNearDuplicateLimit)
+      {
+        println("NEAR: \n" + url + "\n" + checkJaccard._1+"\n"+checkJaccard._2)
+        numOfNearDuplicates = numOfNearDuplicates + 1
+      }
+    }
 
     if(!isExactDuplicate) {
       fingerprintTables = (fingerprintTables.zip(queryDocPermutations)).map{case(x,y) => x.:+(y)}
+      urlsSaved = urlsSaved.:+(url)
     }
     
     return (isExactDuplicate, isNearDuplicate)
@@ -144,6 +175,44 @@ object SimilarityDetector {
   /** Calculate the proportion of positions where s1 and s2 have equal characters */
   private def hammingSimilarity(s1: Fingerprint, s2: Fingerprint): Double = {
     s1.zip(s2).map{case (a, b) => if(a == b) 1 else 0}.sum.toDouble / s1.length
+  }
+  
+  /** calculates the jaccard similarity for the candidate urls that had simhash value of more than
+   *  "nearDuplicateLimit" with the query url. 
+   */
+  private def getJaccardSimilarity(url: String, candidates: List[String]): (String, Double) = {
+    val dataOfQuery =  mainObject.getTextAndLinksFromUrl(url)
+    val textOfQuery = dataOfQuery._1
+    
+    val shinglesOfQuery = shingle(textOfQuery, wordsPerShingle)
+    
+    var maxJacc = 0.0;
+    var urlWithMaxJacc = ""
+    for(i <- 0 to candidates.size - 1)
+    {
+      val dataOfCandidate =  mainObject.getTextAndLinksFromUrl(candidates(i))
+      val textOfCandidate = dataOfCandidate._1
+      
+      val shinglesOfCandidate = shingle(textOfCandidate, wordsPerShingle)
+      val intersectionSet = shinglesOfCandidate & shinglesOfQuery
+      val unionSet = shinglesOfCandidate | shinglesOfQuery
+      
+      val jaccCoeff = intersectionSet.size*1.0 / unionSet.size
+      
+      if(jaccCoeff > maxJacc)
+      {
+        maxJacc = jaccCoeff
+        urlWithMaxJacc = candidates(i)
+      }
+    }
+    
+    (urlWithMaxJacc, maxJacc)
+  }
+  /** return the total number of near duplicate and exact duplicate urls. To be called from the main function 
+   *  after crawling procedure finishes */ 
+  def getNumOfExactAndNearDuplicates(): (Int, Int) = 
+  {
+    (numOfExactDuplicates, numOfNearDuplicates)
   }
 
 
