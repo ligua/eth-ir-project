@@ -10,8 +10,8 @@ object SimilarityDetector {
   private type Shingle = List[String]
   private type Token = String
   private type Fingerprint = String
-  private type PermutationTable = List[String] //TODO decide how to store fingerprint tables .. This list contains all the
-                                    // fingerprints of all documents we have stored so far in a given permutation.   
+  private type PermutationTable = List[String]  // This list contains all the fingerprints of all documents we have
+                                                // stored so far in a given permutation.   
   private type Permutation = Seq[Int]
 
   private val maxBitsToCompare = 10   // How many bits we will compare in each permutation
@@ -23,8 +23,6 @@ object SimilarityDetector {
   private var permutations = List[Permutation]()
   
   for(i <- 1 to numPermutations) {
-    // TODO create empty FingerprintTable and add it to fingerprintTables
-    
     // Create random permutation and remember it
     val perm = Random.shuffle(0 to 31).toList  // Using 0 to 31 because they are indexes of a 32-char string
     permutations = perm :: permutations
@@ -84,8 +82,6 @@ object SimilarityDetector {
     }
 
     if(!isExactDuplicate) {
-      // TODO add (permutation of) this fingerprint to each table
-      
       fingerprintTables = (fingerprintTables.zip(queryDocPermutations)).map{case(x,y) => x.:+(y)}
     }
     
@@ -104,8 +100,6 @@ object SimilarityDetector {
   /** Reorder given fingerprint according to the given permutation */
   private def reorderFingerprint(fp: Fingerprint, perm: Permutation): Fingerprint = 
   {
-      // TODO
-
     var res: Fingerprint = ""
     
     for(i <- 0 to perm.size-1)
