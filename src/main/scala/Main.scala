@@ -14,6 +14,7 @@ object Main_Object {
   var stackUrlsToBeVisited = MutStack[String]()
   
   var studentCount = 0L
+  var uniqueEnglishCount = 0L
 
   def getURLName(name: String, relativeReturn: Int) : String = {
 
@@ -131,6 +132,13 @@ object Main_Object {
           studentCount = studentCount + allText.filter(_.toLowerCase().equals("student")).size
     
           val(isExactDuplicate, isNearDuplicate) = SimDetector.isSimilarOrDuplicate(allText.mkString(" "),currentUrl)
+
+          // Detect language
+          if(!isExactDuplicate && !isNearDuplicate) {
+            val lang = LanguageDetector.detect(allText.mkString((" ")))
+            if(lang == "en")
+              uniqueEnglishCount += 1
+          }
           
           for(link <- allLinks)
           {
@@ -163,6 +171,7 @@ object Main_Object {
     println("Distinct URLs found: ".+(visitedUrls.size))
     println("Exact duplicates found: ".+(duplicates._1))
     println("Near duplicates found: ".+(duplicates._2))
+    println("Unique English pages found: ".+(uniqueEnglishCount))
     println("Term frequency of \"student\": ".+(studentCount))
   }
 }
