@@ -100,7 +100,7 @@ object SimilarityDetector {
     
     if(isExactDuplicate) 
     {
-      println("EXACT: \n" + url + "\n" + maxSim._1 +"\n"+maxSim._2)
+      //println("EXACT: \n" + url + "\n" + maxSim._1 +"\n"+maxSim._2)
       exactDuplicates = exactDuplicates.:+((url, maxSim._1));
       numOfExactDuplicates = numOfExactDuplicates + 1
     }
