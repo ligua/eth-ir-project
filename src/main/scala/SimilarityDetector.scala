@@ -18,12 +18,16 @@ object SimilarityDetector {
                                                 // stored so far in a given permutation.
   private type Permutation = Seq[Int]
 
-  private val maxBitsToCompare = 10       // How many bits we will compare in each permutation
-  private val numPermutations = 100       // Number of random permutations of fingerprint bits (k on lecture slides) we will use
-  private val wordsPerShingle = 2
+  private val numPermutations = 1       // Number of random permutations of fingerprint bits (k on lecture slides) we will use
+  private val wordsPerShingle = 1
   private val nearDuplicateLimit = 0.9    // Minimum similarity between 2 documents to consider them near duplicates
-  private val jaccardNearDuplicateLimit = 0.7
+  private val jaccardNearDuplicateLimit = 0.2
   private val collisionLimit = 1          // How many tables should give a collision so we would consider a candidate
+  private val numBitsFingerPrint = 128
+  private val maxBitsToCompare = 10       // How many bits we will compare in each permutation
+  
+  private var exactDuplicates = List[(String, String)]()
+  private var nearDuplicates = List[(String, String)]()
   
   private var numOfExactDuplicates = 0
   private var numOfNearDuplicates = 0
@@ -36,7 +40,7 @@ object SimilarityDetector {
 
   for(i <- 1 to numPermutations) {
     // Create random permutation and remember it
-    val perm = Random.shuffle(0 to 31).toList  // Using 0 to 31 because they are indexes of a 32-char string
+    val perm = Random.shuffle(0 to numBitsFingerPrint-1).toList  // Using 0 to 31 because they are indexes of a 32-char string
     permutations = perm :: permutations
   }
 
@@ -68,16 +72,21 @@ object SimilarityDetector {
 
       // Find all candidate fingerprints in this table that have same top bits
       val table = fingerprintTables(i)
+      
       val boolTable = hasSameTopBitsInTable(reordered, table)
-
+      
       numOfSimilarity = (numOfSimilarity.zip(boolTable)).map{case(x,y) => if (y) x+1 else x}
     }
 
     // Get all candidates (from permutation 0)
-    val candidates = (urlsSaved, fingerprintTables(0), numOfSimilarity).zipped.toList
-      .filter{case(_, _, count) => count >= collisionLimit}
-      .map{case(u, fp, _) => (u,fp)}
+    //val candidates = (urlsSaved, fingerprintTables(0), numOfSimilarity).zipped.toList
+    //  .filter{case(_, _, count) => count >= collisionLimit}
+    //  .map{case(u, fp, _) => (u,fp)}
 
+    /* HACK to avoid checking numOfSimilarity*/
+    val candidates = (urlsSaved, fingerprintTables(0), numOfSimilarity).zipped.toList
+      .map{case(u, fp, _) => (u,fp)}
+    
     // Get our query string (from permutation 0)
     val reordered0 = queryDocPermutations(0)
 
@@ -91,21 +100,23 @@ object SimilarityDetector {
     
     if(isExactDuplicate) 
     {
-      println("EXACT: \n" + url + "\n" + maxSim._1 +"\n"+maxSim._2)  
+      println("EXACT: \n" + url + "\n" + maxSim._1 +"\n"+maxSim._2)
+      exactDuplicates = exactDuplicates.:+((url, maxSim._1));
       numOfExactDuplicates = numOfExactDuplicates + 1
     }
     
     if(isNearDuplicate)
     {
-      val candidateURLsForJaccard = similarities.filter(_._2 > nearDuplicateLimit).map{x => x._1}
+      //val candidateURLsForJaccard = similarities.filter(_._2 > nearDuplicateLimit).map{x => x._1}
     
-      val checkJaccard = getJaccardSimilarity(url, candidateURLsForJaccard)
-      
-      if(checkJaccard._2 > jaccardNearDuplicateLimit)
-      {
-        println("NEAR: \n" + url + "\n" + checkJaccard._1+"\n"+checkJaccard._2)
+      //val checkJaccard = getJaccardSimilarity(url, candidateURLsForJaccard)
+      //val checkJaccard = 0.3
+      //if(checkJaccard > jaccardNearDuplicateLimit)
+      //{
+        //println("NEAR: \n" + url + "\n" + checkJaccard._1+"\n"+checkJaccard._2)
+        nearDuplicates = nearDuplicates.:+((url, maxSim._1));
         numOfNearDuplicates = numOfNearDuplicates + 1
-      }
+      //}
     }
 
     if(!isExactDuplicate) {
@@ -152,25 +163,27 @@ object SimilarityDetector {
     val seed = 42
     val binString = MurmurHash3.listHash(s, seed).toBinaryString
     
-    String.format("%" + 32 + "s", binString).replace(' ', '0')
+    String.format("%" + numBitsFingerPrint + "s", binString).replace(' ', '0')
   }
-
+  
   /** Hash a shingle into 128-bit binary string */
-  private def hashShingle128(s: Shingle): String = {
+  def hashShingle128(s: Shingle): String = {
     val seed = 42
     val hasher = MessageDigest.getInstance("MD5")
-    val bytes = hasher.digest(s.toString.getBytes("UTF-8")) //MurmurHash3.listHash(s, seed).toBinaryString
+    val bytes = hasher.digest(s.mkString("").getBytes("UTF-8"))
 
-    bytes.map(x => x.toInt.toBinaryString).mkString("")
-    //String.format("%" + 128 + "s", binString).replace(' ', '0')
+    val res = bytes.map(x => x.toInt.toBinaryString.takeRight(8))
+              .map(x => String.format("%" + 8 + "s", x).replace(' ', '0'))
+    
+    res.mkString("")
   }
 
 
   /** Hash a set of shingles into a fingerprint string */
-  private def shinglesToFingerprint(shingles: Set[Shingle]): String = {
-    val hashes = shingles.toList.map(x => hashShingle(x)) // Hash each shingle
+  def shinglesToFingerprint(shingles: Set[Shingle]): String = {
+    val hashes = shingles.toList.map(x => hashShingle128(x)) // Hash each shingle
 
-    var fingerprint = List.fill(32)(0)  // Create list of 32 zeros
+    var fingerprint = List.fill(numBitsFingerPrint)(0)  // Create list of 32 zeros
 
     hashes.foreach(hash => {
       val additions = hash.toCharArray.map(x => x.toInt - '0'.toInt).map(x => 2 * x - 1)
@@ -227,5 +240,9 @@ object SimilarityDetector {
     (numOfExactDuplicates, numOfNearDuplicates)
   }
 
+  def getExactAndNearDuplicates(): (List[(String, String)], List[(String, String)]) = 
+  {
+    (exactDuplicates, nearDuplicates)
+  }
 
 }
