@@ -1,0 +1,22 @@
+# Results:
+
+Distinct URLs found: 3989
+Exact duplicates found: 55
+Near duplicates found: 1065
+Unique English pages found: 1688
+Term frequency of "student": 9180
+
+
+# Near/exact duplicate detection algorithm
+
+For each document:
+
+1. Tokenize document into words, discarding word counts.
+2. Calculate 128-bit md5 hash of each word.
+3. Combine word hashes into a 128-bit fingerprint of current document using SimHash.
+4. Bitwise compare the fingerprint of current document against table of fingerprints of all previously detected unique documents:
+	-> if all bits match => exact duplicate
+	-> if at least 90% of the bits match => near duplicate.
+5. If current document wasn't an exact duplicate, add it to table of fingerprints.
+
+Note that our code allows using multiple permuted fingerprint tables and multi-word shingles by just changing a few parameters.
