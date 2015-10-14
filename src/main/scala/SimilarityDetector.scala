@@ -3,6 +3,8 @@ package main.scala
 import scala.util.Random
 import scala.util.hashing.MurmurHash3
 import scala.runtime.Tuple2Zipped
+import java.security.MessageDigest
+
 
 
 object SimilarityDetector {
@@ -151,6 +153,16 @@ object SimilarityDetector {
     val binString = MurmurHash3.listHash(s, seed).toBinaryString
     
     String.format("%" + 32 + "s", binString).replace(' ', '0')
+  }
+
+  /** Hash a shingle into 128-bit binary string */
+  private def hashShingle128(s: Shingle): String = {
+    val seed = 42
+    val hasher = MessageDigest.getInstance("MD5")
+    val bytes = hasher.digest(s.toString.getBytes("UTF-8")) //MurmurHash3.listHash(s, seed).toBinaryString
+
+    bytes.map(x => x.toInt.toBinaryString).mkString("")
+    //String.format("%" + 128 + "s", binString).replace(' ', '0')
   }
 
 
