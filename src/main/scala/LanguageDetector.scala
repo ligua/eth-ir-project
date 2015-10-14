@@ -16,7 +16,7 @@ object LanguageDetector {
 
   /** Read in models */
   def readModel(lang: String): Model = {
-    Source.fromFile(s"src/main/resources/language_models/$lang.txt").getLines()
+    Source.fromURL(getClass.getResource(s"/$lang.txt")).getLines()
       .map(line => {
       val split = line.replace("\\s$", "").split("\t") // Split and remove whitespace at end of line
       (split(0), split(1).toDouble)
