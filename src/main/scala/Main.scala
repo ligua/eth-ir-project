@@ -196,8 +196,13 @@ object Main_Object {
   }
 
   def main(args: Array[String]): Unit = {
-    
-    val startSeed = "http://idvm-infk-hofmann03.inf.ethz.ch/eth/www.ethz.ch/en.html"
+
+    if(args.length == 0) {
+      println("Usage: 'scala ir-2015-crawler-21.jar <seed_url>")
+      return
+    }
+
+    val startSeed = args(0) //"http://idvm-infk-hofmann03.inf.ethz.ch/eth/www.ethz.ch/en.html"
     crawlUrl(startSeed)
     
     val pw = new PrintWriter(new File("EnglishUrls.txt"));
