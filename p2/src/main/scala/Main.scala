@@ -26,13 +26,13 @@ object Main {
 
   def main(args: Array[String]): Unit = {
 
-    // testStream()
+    testStream()
 
     // Create a document stream and extract features from it
-    val docStream = new TipsterStream("data/zips")
-    val featureStream: Stream[Features] = FeatureExtractor.extract(docStream)
+    // val docStream = new TipsterStream("data/zips")
+    // val featureStream: Stream[Features] = FeatureExtractor.extract(docStream)
 
-    
+
 
 
   }
