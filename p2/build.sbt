@@ -1,8 +1,5 @@
-
 lazy val root = (project in file(".")).
   settings(
-    name := "Group 21 web crawler",
-    mainClass in Compile := Some("main.scala.Main_Object"),
-    mainClass in assembly := Some("main.scala.Main_Object"),
-    assemblyJarName in assembly := "ir-2015-crawler-21.jar"
+    name := "Group 21 query engine",
+    mainClass in (Compile, run) := Some("main.scala.Main")
   )
