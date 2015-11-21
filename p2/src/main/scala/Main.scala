@@ -17,8 +17,8 @@ object Main {
     var length : Long = 0
     var tokens : Long = 0
     for (doc <- tipster.stream.take(10000)) {
-      // length += doc.content.length
-      // tokens += doc.tokens.length
+      length += doc.content.length
+      tokens += doc.tokens.length
     }
     println("Final number of characters = " + length)
     println("Final number of tokens     = " + tokens)
@@ -26,11 +26,15 @@ object Main {
 
   def main(args: Array[String]): Unit = {
 
-    // Create a document stream and extract features from it
-    //val docStream = new TipsterStream("data/zips")
-    //val featureStream: Stream[Features] = FeatureExtractor.extract(docStream)
+    // testStream()
 
-    testStream()
+    // Create a document stream and extract features from it
+    val docStream = new TipsterStream("data/zips")
+    val featureStream: Stream[Features] = FeatureExtractor.extract(docStream)
+
+    
+
+
   }
 
 }
