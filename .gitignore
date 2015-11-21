@@ -20,3 +20,6 @@ project/plugins/project/
 
 # OS X
 .DS_Store
+
+# Project 2 data
+p2/data
