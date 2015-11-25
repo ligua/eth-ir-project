@@ -5,12 +5,15 @@ import main.scala.Main._
 
 object Classifier {
 
+  val forest = new weka.classifiers.trees.RandomForest()
+
   def train(features: Features, labels: Labels): Unit = {
     /** Train the classifier using features and corresponding labels. */
 
     val numFeatures = features(0).length
     val train_size = features.length
 
+    // Put features and label into representation that WEKA accepts
     val fvVector: FastVector = new FastVector(numFeatures)
     for (i <- 0 until numFeatures - 1) fvVector.addElement(new Attribute(Integer.toString(i)))
     val fvClassVal: FastVector = new FastVector(2)
@@ -33,15 +36,16 @@ object Classifier {
       trainingInstances.add(iExample)
     }
 
-    val forest : weka.classifiers.trees.RandomForest = new weka.classifiers.trees.RandomForest()
+    // Train random forest
     forest.setNumTrees(10)
-
     try {
       forest.buildClassifier(trainingInstances)
     } catch {
       case e: Exception => e.printStackTrace()
     }
 
+
+    // Prediction? TODO put into another function
     val dataUnlabeled : Instances = new Instances("TestInstances", fvVector, 0)
     dataUnlabeled.setClassIndex(numFeatures - 1)
     for (i <- 0 until train_size) {

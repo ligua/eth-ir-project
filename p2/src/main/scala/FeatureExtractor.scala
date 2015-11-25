@@ -15,6 +15,7 @@ object FeatureExtractor {
     var features = Array[Array[Double]]()
     var labels = Array[Int]()
 
+    // For each training data point
     for (i <- 0 to scoresCollection.size - 1) {
 
       val item = scoresCollection(i).split(" ").toList
@@ -23,9 +24,9 @@ object FeatureExtractor {
       val docId = item(2).replace("-", "")
       val relevance: Int = item(3).toString.toInt
 
-      val query = topics(queryId)
+      val query = topics(queryId)  // Query is topic title corresponding to given topic ID
 
-      try {
+      try {  // Catch error if document of current training data row is not in our subcollection
 
         val document = docCollection(docId)
         val doc_title = document.title.toLowerCase.trim()
@@ -50,12 +51,13 @@ object FeatureExtractor {
   }
 
   def score_basic(query: String, doc: String) = {
+    /** Number of terms in  */
     val qterms = Tokenizer.tokenize(query).distinct
 
     def score(doc: List[String]): (Double, Double) = {
       val tfs: Map[String, Int] = doc.groupBy(identity).mapValues(l => l.length)
       val qtfs = qterms.flatMap(q => tfs.get(q))
-      val numTermsInCommon = qtfs.length
+      val numTermsInCommon = qtfs.length  // Number of query terms inside document
       val docLen = tfs.values.map(x => x * x).sum.toDouble
       val queryLen = qterms.length.toDouble
       val termOverlap = qtfs.sum.toDouble / (docLen * queryLen)

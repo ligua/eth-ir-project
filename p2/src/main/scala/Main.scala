@@ -15,13 +15,14 @@ object Main {
   val df_stem = MutMap[String, Int]()
   val idf_stem = MutMap[String, Double]()
 
-  var collectionSize: Int = 200
+  var collectionSize: Int = 60
   val logCollectionSize = log2(collectionSize)
   val stopWords = StopWords.stopWords
 
   def log2(x: Double) = math.log10(x) / math.log10(2.0)
 
   def get_doc_frequency(docs: MutMap[String, XMLDocument]) = {
+    /** Get document frequency and inverse document frequency. */
     for (doc <- docs)
       df ++= Tokenizer.tokenize(doc._2.content.toLowerCase.trim()).distinct.map(t => t -> (1 + df.getOrElse(t, 0)))
 
