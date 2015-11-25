@@ -1,10 +1,11 @@
 package main.scala
 
 import weka.core.{Attribute, FastVector, Instance, Instances}
+import main.scala.Main._
 
 object Classifier {
 
-  def train(features: Array[Array[Double]], labels: Array[Int]): Unit = {
+  def train(features: Features, labels: Labels): Unit = {
     /** Train the classifier using features and corresponding labels. */
 
     val numFeatures = features(0).length

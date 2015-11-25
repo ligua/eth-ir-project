@@ -9,11 +9,11 @@ object Main {
   type Features = Array[Array[Double]]
   type Labels   = Array[Int]
 
-  val df = collection.mutable.Map[String, Int]()
-  val idf = collection.mutable.Map[String, Double]()
+  val df = MutMap[String, Int]()
+  val idf = MutMap[String, Double]()
 
-  val df_stem = collection.mutable.Map[String, Int]()
-  val idf_stem = collection.mutable.Map[String, Double]()
+  val df_stem = MutMap[String, Int]()
+  val idf_stem = MutMap[String, Double]()
 
   var collectionSize: Int = 1
   val logCollectionSize = log2(collectionSize)
@@ -21,7 +21,7 @@ object Main {
 
   def log2(x: Double) = math.log10(x) / math.log10(2.0)
 
-  def get_doc_frequency(docs: scala.collection.mutable.Map[String, XMLDocument]) = {
+  def get_doc_frequency(docs: MutMap[String, XMLDocument]) = {
     for (doc <- docs)
       df ++= Tokenizer.tokenize(doc._2.content.toLowerCase.trim()).distinct.map(t => t -> (1 + df.getOrElse(t, 0)))
 

@@ -7,7 +7,10 @@ import scala.collection.mutable.{Map => MutMap}
 
 object FeatureExtractor {
 
-  def extract_features(docCollection: MutMap[String, XMLDocument], scoresCollection: List[String], topics: MutMap[Int, String]): (Features, Labels) = {
+  def extract_features(docCollection: MutMap[String, XMLDocument],
+                       scoresCollection: List[String],
+                       topics: MutMap[Int, String]): (Features, Labels) = {
+    /** Extract the features for each document in docCollection. */
 
     var features = Array[Array[Double]]()
     var labels = Array[Int]()
