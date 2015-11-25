@@ -15,7 +15,7 @@ object Main {
   val df_stem = MutMap[String, Int]()
   val idf_stem = MutMap[String, Double]()
 
-  var collectionSize: Int = 1
+  var collectionSize: Int = 200
   val logCollectionSize = log2(collectionSize)
   val stopWords = StopWords.stopWords
 
@@ -36,14 +36,15 @@ object Main {
   def testStream() = {
 
     // Load tipster articles
-    val tipster = new TipsterStream("data/zips")
+    val tipster = new TipsterStream("data/zips-1")
     println("Number of files in zips = " + tipster.length)
 
-    //Load dataset of training topics and scores
+    // Load dataset of training topics and scores
     val topicsCollection: List[String] = io.Source.fromFile("data/topics").getLines().toList
     val scoresCollection: List[String] = io.Source.fromFile("data/qrels").getLines().toList
     val topics = MutMap[Int, String]()
 
+    // Create map 'topic number -> topic title'
     topicsCollection.filter(p => p.startsWith("<num>")).foreach(f => topics +=
       topicsCollection(topicsCollection.indexOf(f)).replace(" ", "").takeRight(2).toInt -> topicsCollection(topicsCollection.indexOf(f) + 6)
         .replace("<title>", "").replace("Topic:", "").toLowerCase.trim())
