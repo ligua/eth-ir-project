@@ -39,13 +39,15 @@ object Main {
 
   def testStream() = {
 
+    val data_dir_path = "data/"
+
     // Load tipster articles
-    val tipster = new TipsterStream("src/data/zips")
+    val tipster = new TipsterStream(data_dir_path + "zips-1")
     println("Number of files in zips = " + tipster.length)
 
     // Load dataset of training topics and scores
-    val topicsCollection: List[String] = io.Source.fromFile("src/data/topics").getLines().toList
-    val scoresCollection: List[String] = io.Source.fromFile("src/data/qrels").getLines().toList
+    val topicsCollection: List[String] = io.Source.fromFile(data_dir_path + "topics").getLines().toList
+    val scoresCollection: List[String] = io.Source.fromFile(data_dir_path + "qrels").getLines().toList
     val topics = MutMap[Int, String]()
 
     // Create map 'topic number -> topic title'
