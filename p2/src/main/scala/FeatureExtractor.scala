@@ -1,13 +1,14 @@
 package main.scala
 
-import ch.ethz.dal.tinyir.processing.{XMLDocument, Tokenizer}
-import com.github.aztek.porterstemmer.PorterStemmer
+import _root_.ch.ethz.dal.tinyir.processing.{Tokenizer, XMLDocument}
+import _root_.com.github.aztek.porterstemmer.PorterStemmer
 import main.scala.Main._
 import scala.collection.mutable.{Map => MutMap}
 
 object FeatureExtractor {
 
-  def extract_features(docCollection: MutMap[String, XMLDocument],
+  def extract_features(//docCollection: MutMap[String, XMLDocument],
+                       docCollection: Stream[XMLDocument], // stream of documents relevant for training sorted by title
                        scoresCollection: List[String],
                        topics: MutMap[Int, String]): (Features, Labels) = {
     /** Extract the features for each document in docCollection. */
@@ -15,37 +16,83 @@ object FeatureExtractor {
     var features = Array[Array[Double]]()
     var labels = Array[Int]()
 
-    // For each training data point
-    for (i <- 0 to scoresCollection.size - 1) {
+    val scoresCollectionSorted = scoresCollection.map(s => s.split(" ").toList.map(e => e.replace("-", ""))).sortWith(_(2) < _(2))
 
-      val item = scoresCollection(i).split(" ").toList
+    val documentIterator = docCollection.iterator
+
+    var currentDocument = documentIterator.next()
+
+    // For each training data point
+
+    var i = 0
+
+    var stopTraining = false
+
+    while (i <= scoresCollectionSorted.size - 1) {
+
+      //val item = scoresCollection(i).split(" ").toList
+
+      val item = scoresCollectionSorted(i)
 
       val queryId = item(0).toInt
       val docId = item(2).replace("-", "")
       val relevance: Int = item(3).toString.toInt
 
-      val query = topics(queryId)  // Query is topic title corresponding to given topic ID
-
-      try {  // Catch error if document of current training data row is not in our subcollection
-
-        val document = docCollection(docId)
-        val doc_title = document.title.toLowerCase.trim()
-        val doc_content = document.content.toLowerCase.trim()
-
-        val score1 = FeatureExtractor.score_basic(query, doc_content)
-        val score2 = FeatureExtractor.score_title(query, doc_title)
-        val score3 = FeatureExtractor.score_tf_idf(query, doc_content, false)
-        //val score4 = FeatureExtractor.score_tf_idf(query, doc_content, true)
-
-        features = features :+ Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance)
-        labels = labels :+ relevance
-        println(relevance, score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4)
-
-      } catch {
-        case e: Exception => null
+      if(!documentIterator.hasNext)
+      {
+        // all documents in subcollection and present in qrels have been used, so stop training
+        stopTraining = true
       }
 
+      if(!stopTraining) {
+        if (docId == currentDocument.name) {
+          // this mean that current qrel is with a document in our stream, so use this training point, otherwise skip
+
+          val query = topics(queryId) // Query is topic title corresponding to given topic ID
+
+          try {
+            // Catch error if document of current training data row is not in our subcollection
+
+            val document = currentDocument // TODO (was docId)
+            val doc_title = document.title.toLowerCase.trim()
+            val doc_content = document.content.toLowerCase.trim()
+
+            val score1 = FeatureExtractor.score_basic(query, doc_content)
+            val score2 = FeatureExtractor.score_title(query, doc_title)
+            val score3 = FeatureExtractor.score_tf_idf(query, doc_content, false)
+            //val score4 = FeatureExtractor.score_tf_idf(query, doc_content, true)
+
+            features = features :+ Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance)
+            labels = labels :+ relevance
+
+            println("query #: " + i)
+            //println(relevance, score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4)
+
+            i = i + 1
+
+          } catch {
+            case e: Exception => null
+          }
+        }
+        else {
+          if (docId > currentDocument.name) {
+            // meaning that current document has been used in all its corresponding training points, so go to next document
+            currentDocument = documentIterator.next()
+          }
+          else {
+            // this mean current training data has document id less than the smallest document id in out stream, so this training point will not be relevant, skip it.
+            println("skip")
+          }
+        }
+      }
+      else
+      {
+        // to break from loop
+        i = scoresCollectionSorted.size
+      }
     }
+
+    println("finished")
 
     return (features, labels)
   }
