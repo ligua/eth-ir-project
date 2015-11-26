@@ -16,7 +16,7 @@ object Main {
   val df_stem = MutMap[String, Int]()
   val idf_stem = MutMap[String, Double]()
 
-  var collectionSize: Int = 200000 // 242917
+  var collectionSize: Int = 200 // 242917
   val logCollectionSize = log2(collectionSize)
   val stopWords = StopWords.stopWords
 
@@ -89,6 +89,9 @@ object Main {
 
     // Perform classification using Random Forest from Weka ML library
     Classifier.train(features, labels)
+
+    val predictedLabels = Classifier.predict(features)
+    labels.zip(predictedLabels).foreach(kv => println(s"true\t${kv._1}, predicted\t${kv._2}"))
 
   }
 
