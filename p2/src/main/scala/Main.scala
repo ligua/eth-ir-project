@@ -93,6 +93,7 @@ object Main {
     val predictedLabels = Classifier.predict(features)
     labels.zip(predictedLabels).foreach(kv => println(s"true\t${kv._1}, predicted\t${kv._2}"))
 
+    println(s"F1 score: ${Classifier.eval_f1score(labels, predictedLabels)}")
   }
 
   def main(args: Array[String]): Unit = {
