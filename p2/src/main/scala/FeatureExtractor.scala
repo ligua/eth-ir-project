@@ -8,7 +8,7 @@ import scala.collection.mutable.{Map => MutMap}
 object FeatureExtractor {
 
   def extract_features(//docCollection: MutMap[String, XMLDocument],
-                       docCollection: Stream[XMLDocument], // stream of documents relevant for training sorted by title
+                       docCollection: Iterator[XMLDocument], // stream of documents relevant for training sorted by title
                        scoresCollection: List[String],
                        topics: MutMap[Int, String]): (Features, Labels) = {
     /** Extract the features for each document in docCollection. */
@@ -18,7 +18,7 @@ object FeatureExtractor {
 
     val scoresCollectionSorted = scoresCollection.map(s => s.split(" ").toList.map(e => e.replace("-", ""))).sortWith(_(2) < _(2))
 
-    val documentIterator = docCollection.iterator
+    val documentIterator = docCollection
 
     var currentDocument = documentIterator.next()
 

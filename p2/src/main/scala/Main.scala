@@ -16,7 +16,7 @@ object Main {
   val df_stem = MutMap[String, Int]()
   val idf_stem = MutMap[String, Double]()
 
-  var collectionSize: Int = 200 // 242917
+  var collectionSize: Int = 200000 // 242917
   val logCollectionSize = log2(collectionSize)
   val stopWords = StopWords.stopWords
 
@@ -65,7 +65,7 @@ object Main {
        not helpful */
     var counter = 0
 
-    val streamOfRelevantDocumentsForTraining = tipster.stream.take(collectionSize).filter( p => documentsInTrainingSet.contains(p.name))
+    val streamOfRelevantDocumentsForTraining = tipster.stream.take(collectionSize).filter( p => documentsInTrainingSet.contains(p.name)).toIterator
     //val streamOfRelevantDocumentsForTraining = tipster.stream.take(collectionSize).filter( p => documentsInTrainingSet.contains(p.name))
 
     print("Number of relevant documents for training: ")
