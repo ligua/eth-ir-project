@@ -22,11 +22,18 @@ object Main {
 
   def log2(x: Double) = math.log10(x) / math.log10(2.0)
 
-  def get_doc_frequency(docs: MutMap[String, XMLDocument]) = {
+  def get_doc_frequency(docs: Iterator[XMLDocument]) = {
     /** Get document frequency and inverse document frequency. */
-    for (doc <- docs) {
-      df ++= Tokenizer.tokenize(doc._2.content.toLowerCase.trim()).distinct.map(t => t -> (1 + df.getOrElse(t, 0)))
-      //cf ++= Tokenizer.tokenize(doc._2.content.toLowerCase.trim()).groupBy(identity).map(t => t._1 -> (t._2.length + cf.getOrElse(t._1, 0)))
+    var tmp = 0
+    while (docs.hasNext) {
+      println(tmp)
+      tmp = tmp + 1
+      val current = docs.next()
+
+      val tokens = Tokenizer.tokenize(current.content.toLowerCase.trim())
+
+      df ++= tokens.distinct.map(t => t -> (1 + df.getOrElse(t, 0)))
+      cf ++= tokens.groupBy(identity).map(t => t._1 -> (t._2.length + cf.getOrElse(t._1, 0)))
     }
 
     df.foreach(kv => idf += kv._1 -> (logCollectionSize - log2(kv._2)))
@@ -63,10 +70,9 @@ object Main {
 
     /* add to subcollection only documents that are actually used for training. documents that don't appear in qrel are
        not helpful */
-    var counter = 0
 
     val streamOfRelevantDocumentsForTraining = tipster.stream.take(collectionSize).filter( p => documentsInTrainingSet.contains(p.name)).toIterator
-    //val streamOfRelevantDocumentsForTraining = tipster.stream.take(collectionSize).filter( p => documentsInTrainingSet.contains(p.name))
+    val streamSubCollection = tipster.stream.take(collectionSize).toIterator
 
     print("Number of relevant documents for training: ")
     //println(streamOfRelevantDocumentsForTraining.toList.length)
@@ -75,7 +81,7 @@ object Main {
     println("Loading done")
 
     // Compute document and inversed document frequencies
-    get_doc_frequency(subCollection)
+    get_doc_frequency(streamSubCollection)
     println("Frequencies computed")
 
 
