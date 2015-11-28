@@ -83,7 +83,7 @@ object Classifier {
 
   def eval_precision_recall(trueLabels: Labels, predictedLabels: Labels): (Double, Double) = {
     /** Calculate precision and recall metrics. */
-    val tp = trueLabels.zip(predictedLabels).map(x => if(x._1 == x._2) 1 else 0).sum           // TRUE POSITIVES
+    val tp = trueLabels.zip(predictedLabels).map(x => if(x._1 == x._2 && x._1 == 1) 1 else 0).sum           // TRUE POSITIVES
     val fp = trueLabels.zip(predictedLabels).map(x => if(x._1 == 0 && x._2 == 1) 1 else 0).sum // FALSE POSITIVES
     val fn = trueLabels.zip(predictedLabels).map(x => if(x._1 == 1 && x._2 == 0) 1 else 0).sum // FALSE NEGATIVES
 
