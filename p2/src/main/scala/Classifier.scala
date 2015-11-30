@@ -1,5 +1,7 @@
 package main.scala
 
+import weka.classifiers.Evaluation
+import weka.core.Debug.Random
 import weka.core.{Attribute, FastVector, Instance, Instances}
 import main.scala.Main._
 
@@ -39,13 +41,20 @@ object Classifier {
     }
 
     // Train random forest
-    forest.setNumTrees(10)
+    forest.setNumTrees(20)
     try {
       forest.buildClassifier(trainingInstances)
     } catch {
       case e: Exception => e.printStackTrace()
     }
 
+    println("hiii")
+    val eval : Evaluation = new Evaluation(trainingInstances);
+    eval.crossValidateModel(forest, trainingInstances, 10, new Random(1));
+    eval.confusionMatrix().foreach(_.foreach(println))
+    println("hii")
+    println(eval.correct())
+    //System.exit(0)
   }
 
   def predict(features: Features): (Labels, PredictedRelevancyProbability) = {

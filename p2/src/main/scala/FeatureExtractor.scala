@@ -16,8 +16,8 @@ object FeatureExtractor {
   val df_stem = MutMap[String, Int]()
   val idf_stem = MutMap[String, Double]()
 
-  var collectionSize: Int = 250000 // 242917
-  val logCollectionSize = log2(collectionSize)
+  var collectionSize: Int = 0
+
   val stopWords = StopWords.stopWords
 
   var queryTerms = MutSet[String]()
@@ -165,6 +165,10 @@ object FeatureExtractor {
     generalDocumentMapLogTermFrequency_2 = generalDocumentMapTermFrequency_2.map(t => t._1 -> logtf(t._2))
     generalDocumentMapLogTermFrequency_5 = generalDocumentMapTermFrequency_5.map(t => t._1 -> logtf(t._2))
 
+
+    collectionSize = documentCounter
+    val logCollectionSize = log2(collectionSize)
+
     df.foreach(kv => idf += kv._1 -> (logCollectionSize - log2(kv._2)))
 
     /*for (doc <- docs)
@@ -241,6 +245,9 @@ object FeatureExtractor {
 
         var topic_counter = -1
 
+        var current_doc_name_in_qrel = scoresCollectionSorted(qrel_counter)(2).replace("-", "")
+        var current_topic_in_qrel = scoresCollectionSorted(qrel_counter)(0).toInt
+
         for(topic <- all_topics_sorted)
           {
               topic_counter += 1
@@ -253,23 +260,29 @@ object FeatureExtractor {
 
               val score3 = score_tf_idf(all_queries_tokenized(topic_counter), doc_content, doc_name, false)
 
-              val feature_array = Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, -100) // don't care about last number.. just for WEKA Library (relevance is placed in training vectors)
-              best1000FeaturesForRanking(topic_counter).enqueue(new FeatureArray(doc_name, feature_array))
 
-              if (best1000FeaturesForRanking(topic_counter).size == 301) {
+              val feature_array = Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, -100) // don't care about last number.. just for WEKA Library (relevance is placed in training vectors)
+              best1000FeaturesForRanking(topic_counter).enqueue(new FeatureArray(doc.name.trim(), feature_array))
+
+              if (best1000FeaturesForRanking(topic_counter).size == 501) {
                 // keep only best 1000 features..
                 best1000FeaturesForRanking(topic_counter).dequeue()
               }
 
-              if (scoresCollectionSorted(qrel_counter)(0).toInt == (topic_counter + 51) && scoresCollectionSorted(qrel_counter)(2).replace("-", "").equals(doc_name)) {
+
+
+              if (current_topic_in_qrel == (topic_counter + 51) && current_doc_name_in_qrel.equals(doc_name)) {
+
                 // current query - document pair is in qrel
                 val relevance = scoresCollectionSorted(qrel_counter)(3).toInt
 
-                featureVectorsUsedForTraining = featureVectorsUsedForTraining :+ Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance)
-                labelsForTraining = labelsForTraining :+ relevance
+                featureVectorsUsedForTraining = Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance) +: featureVectorsUsedForTraining
+                labelsForTraining =  relevance +: labelsForTraining
 
                 qrel_counter += 1
 
+                current_doc_name_in_qrel = scoresCollectionSorted(qrel_counter)(2).replace("-", "")
+                current_topic_in_qrel = scoresCollectionSorted(qrel_counter)(0).toInt
               }
           }
 
@@ -316,7 +329,6 @@ object FeatureExtractor {
 
 
     /************** SECOND PASS *************/
-
 
     tipster = new TipsterCorpusIterator(data_dir_path + "allZips")
 
