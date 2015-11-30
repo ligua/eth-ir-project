@@ -27,6 +27,7 @@ object FeatureExtractor {
   var documentCounter = 0
 
   var documentsInTrainingSet = Set[String]()
+  var scoresCollectionSorted = List[List[String]]()
 
   // this map is used to keep the number of occurences of the query vocabulary in the document and keeps a map only
   // for the relevant documents
@@ -321,7 +322,7 @@ object FeatureExtractor {
 
     tipster = new TipsterCorpusIterator(data_dir_path + "allZips")
 
-    val scoresCollectionSorted = scoresCollection.map(s => s.split(" ").toList.map(e => e.replace("-", ""))).sortWith(_(2) < _(2))
+    scoresCollectionSorted = scoresCollection.map(s => s.split(" ").toList.map(e => e.replace("-", ""))).sortWith(_(2) < _(2))
 
     second_pass(tipster, topics, scoresCollectionSorted)
 

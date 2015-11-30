@@ -40,6 +40,7 @@ object Main {
 
     println(s"F1 score: ${Classifier.eval_f1score(labelsForTraining, predictedLabels)}")
 
+    var averagePs = List[Double]()
 
     for(best1000FeatureForTopic <- FeatureExtractor.best1000FeaturesForRanking)
       {
@@ -48,15 +49,31 @@ object Main {
 
         val (predictedLabels, predictedRelevancyProbability) = Classifier.predict(tmpArrayOf1000BestFeatures)
 
-
         val writer = new PrintWriter(new File("query"+(51 + topic_counter)+"_top_100.txt" ))
 
-        tmpDocumentNamesOf1000BestFeatures.zip(predictedRelevancyProbability).sortWith(_._2 > _._2).take(100).foreach(writer.println)
+        val resultList = tmpDocumentNamesOf1000BestFeatures.zip(predictedRelevancyProbability).sortWith(_._2 > _._2).take(100)
+        resultList.foreach(writer.println)
+
+        /***** SCORING *****/
+        // Get all relevant documents for this topic (ground truth)
+        val groundTruth = FeatureExtractor.scoresCollectionSorted
+          .filter(row => row(0).toInt == (51 + topic_counter) && row(3).toInt == 1)   // Take only relevant qrels for this topic
+          .map(row => row(2))                                                         // Keep only document ID
+
+        // Calculate Average Precision score and keep it
+        val averageP = Classifier.eval_average_precision(groundTruth, resultList.map(x => x._1))
+        // println(s"Average precision for topic ${51 + topic_counter}: ${averageP}")
+        averagePs = averageP +: averagePs
 
         writer.close()
 
         topic_counter += 1
       }
+
+    // Calculate MAP (Mean Average Precision) score
+    val MAP = averagePs.sum / averagePs.size
+    println(s"\nMAP score: $MAP")
+
   }
 
   def main(args: Array[String]): Unit = {

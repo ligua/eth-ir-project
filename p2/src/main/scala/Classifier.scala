@@ -105,6 +105,29 @@ object Classifier {
     return 2 * precision * recall / (precision + recall)
   }
 
+  def eval_average_precision(groundTruth: Seq[String], retrieved: Seq[String]): Double = {
+    /** Calculate average precision for this topic. groundTruth are the true relevant documents, retrieved are documents
+      * retrieved by our system, ordered from most relevant to least relevant.
+      * See https://en.wikipedia.org/wiki/Information_retrieval#Average_precision. */
+
+    var num_retrieved = 0 // # of retrieved documents
+    var num_tp = 0        // # of true positives (relevant & retrieved)
+
+    var runningSum = 0.0       // Running sum of P(k) * rel(k)
+
+    for(retrievedDoc <- retrieved) {
+      // Calculate precision at this position in the result list
+      num_retrieved += 1
+
+      if(groundTruth.contains(retrievedDoc)) {    // Retrieved doc at this position was relevant
+        num_tp += 1
+        val currentPrecision = num_tp.toDouble / num_retrieved
+        runningSum += currentPrecision
+      }
+    }
+
+    return runningSum / groundTruth.size
+  }
 
 
 }
