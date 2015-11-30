@@ -48,7 +48,7 @@ object Classifier {
 
   }
 
-  def predict(features: Features): Labels = {
+  def predict(features: Features): (Labels, PredictedRelevancyProbability) = {
     /** Predict labels of given feature vectors. */
 
     val numFeatures = features(0).length
@@ -60,6 +60,7 @@ object Classifier {
 
     // Empty list to hold labels
     var predictedLabels = Array[Int]()
+    var predictedRelevancyProbability = Array[Double]()
 
     for (i <- 0 until dataset_size) {
       // Add all features to a row and then add the row to test dataset
@@ -73,12 +74,13 @@ object Classifier {
         val result = 2 * p(0) / (p(0) + p(1)) - 1
         val resultDecision = if (result >= 0) 1 else 0
         predictedLabels = resultDecision +: predictedLabels
+        predictedRelevancyProbability = ( p(0) / (p(0) + p(1)) ) +: predictedRelevancyProbability
       } catch {
         case e: Exception => e.printStackTrace()
       }
     }
 
-    return predictedLabels.reverse
+    return (predictedLabels.reverse, predictedRelevancyProbability.reverse)
   }
 
   def eval_precision_recall(trueLabels: Labels, predictedLabels: Labels): (Double, Double) = {

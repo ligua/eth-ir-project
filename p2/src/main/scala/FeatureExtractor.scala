@@ -34,31 +34,33 @@ object FeatureExtractor {
   val generalDocumentMapTermFrequency_2 = MutMap[String, Map[String, Int]]() // half document
   val generalDocumentMapTermFrequency_5 = MutMap[String, Map[String, Int]]() // 1/5 of document
 
-  def score_basic(query: String, doc: String) = {
-    /** Number of terms in query*/
-    val qterms = Tokenizer.tokenize(query).distinct
+  var generalDocumentMapLogTermFrequency = MutMap[String, Map[String, Double]]()
+  var generalDocumentMapLogTermFrequency_2 = MutMap[String, Map[String, Double]]() // half document
+  var generalDocumentMapLogTermFrequency_5 = MutMap[String, Map[String, Double]]() // 1/5 of document
 
-    def score(doc: List[String]): (Double, Double) = {
+  def score_basic(query_tokenized: List[String], docName: String, docEuclideanLength: Double) = {
 
-      val tfs: Map[String, Int] = doc.groupBy(identity).mapValues(l => l.length)
-      val qtfs = qterms.flatMap(q => tfs.get(q))
+      val tfs: Map[String, Int] = generalDocumentMapTermFrequency.get(docName).get
+      val qtfs = query_tokenized.flatMap(q => tfs.get(q))
       val numTermsInCommon = qtfs.length  // Number of query terms inside document
-      val docLen = tfs.values.map(x => x * x).sum.toDouble
-      val queryLen = qterms.length.toDouble
-      val termOverlap = qtfs.sum.toDouble / (docLen * queryLen)
+
+      val queryLen = query_tokenized.length.toDouble
+      val termOverlap = qtfs.sum.toDouble / (docEuclideanLength * queryLen)
 
 
-      //(numTermsInCommon.toDouble / queryLen + termOverlap, termOverlap)
-      (0,0)
-    }
-
-    score(Tokenizer.tokenize(doc))
+      (numTermsInCommon.toDouble / queryLen + termOverlap, termOverlap)
   }
 
-  def score_tf_idf(query: String, doc: String, docName: String, pstemmer: Boolean) = {
+  def logtf(tf: Map[String, Int]): Map[String, Double] = {
+    val sum = tf.values.sum.toDouble
+    //val sum = generalDocumentLength.get(docName).get
+    tf.mapValues(v => log2((v.toDouble + 1.0) / sum))
+  }
+
+  def score_tf_idf(query_tokenized: List[String], doc: String, docName: String, pstemmer: Boolean) = {
 
 
-    var qterms = Tokenizer.tokenize(query.toLowerCase).distinct.filter(!stopWords.contains(_))
+    var qterms = query_tokenized.filter(!stopWords.contains(_))
     //val dterms = Tokenizer.tokenize(doc.toLowerCase)
 
     if (pstemmer) {
@@ -71,12 +73,9 @@ object FeatureExtractor {
     def tf_2(docName: String): Map[String, Int] = generalDocumentMapTermFrequency_2.get(docName).get
     def tf_5(docName: String): Map[String, Int] = generalDocumentMapTermFrequency_5.get(docName).get
 
-
-    def logtf(tf: Map[String, Int]): Map[String, Double] = {
-      val sum = tf.values.sum.toDouble
-      //val sum = generalDocumentLength.get(docName).get
-      tf.mapValues(v => log2((v.toDouble + 1.0) / sum))
-    }
+    def logtf(docName: String): Map[String, Double] = generalDocumentMapLogTermFrequency.get(docName).get
+    def logtf_2(docName: String): Map[String, Double] = generalDocumentMapLogTermFrequency_2.get(docName).get
+    def logtf_5(docName: String): Map[String, Double] = generalDocumentMapLogTermFrequency_5.get(docName).get
 
     var ltf = Map[String, Double]()
     var ltf_2 = Map[String, Double]()
@@ -88,9 +87,17 @@ object FeatureExtractor {
     qterms.map(q => ltf_5 += q -> logtf(tf(dterms.take(dterms.size / 5))).getOrElse(q, 0))
     */
 
+    /*
     qterms.map(q => ltf += q -> logtf(tf(docName)).getOrElse(q, 0))
     qterms.map(q => ltf_2 += q -> logtf(tf_2(docName)).getOrElse(q, 0))
     qterms.map(q => ltf_5 += q -> logtf(tf_5(docName)).getOrElse(q, 0))
+    */
+
+    qterms.map(q => ltf += q -> logtf(docName).getOrElse(q, 0))
+    qterms.map(q => ltf_2 += q -> logtf_2(docName).getOrElse(q, 0))
+    qterms.map(q => ltf_5 += q -> logtf_5(docName).getOrElse(q, 0))
+
+
 
     val score1 = -1 * qterms.flatMap(q => ltf.get(q)).sum
 
@@ -108,18 +115,14 @@ object FeatureExtractor {
       score4 = -1 * qterms.map(q => (idf_stem.getOrElse(q, 0.0) * ltf_5(q))).sum
     }
 
-    //(score1, score2, score3, score4)
     (score1, score2, score3, score4)
   }
 
-  def score_title(query: String, docTitle: String) = {
+  def score_title(query_tokenized_porter_stemmer: List[String], docTitle: String, tfs: Map[String, Int]) = {
 
-    val qterms = Tokenizer.tokenize(query).distinct.map(PorterStemmer.stem(_))
-    val length = qterms.length
+    val length = query_tokenized_porter_stemmer.length
 
-    val titleTerms = Tokenizer.tokenize(docTitle).map(PorterStemmer.stem(_))
-    val tfs: Map[String, Int] = titleTerms.groupBy(identity).mapValues(l => l.length)
-    val qtfs = qterms.flatMap(q => tfs.get(q))
+    val qtfs = query_tokenized_porter_stemmer.flatMap(q => tfs.get(q))
 
     qtfs.length.toDouble / length // percentage of terms in common
 
@@ -154,10 +157,13 @@ object FeatureExtractor {
       val tmp_5 = (tokensFromQueryTerms_5.groupBy(identity).map(t => t._1 -> (t._2.length)))
       generalDocumentMapTermFrequency_5 += (currentDocument.name.replace("-","") ->  tmp_5)
 
-
       df ++= tokensFromQueryTerms.distinct.map(t => t -> (1 + df.getOrElse(t, 0)))
       cf ++= tokensFromQueryTerms.groupBy(identity).map(t => t._1 -> (t._2.length + cf.getOrElse(t._1, 0)))
     }
+
+    generalDocumentMapLogTermFrequency = generalDocumentMapTermFrequency.map(t => t._1 -> logtf(t._2))
+    generalDocumentMapLogTermFrequency_2 = generalDocumentMapTermFrequency_2.map(t => t._1 -> logtf(t._2))
+    generalDocumentMapLogTermFrequency_5 = generalDocumentMapTermFrequency_5.map(t => t._1 -> logtf(t._2))
 
     df.foreach(kv => idf += kv._1 -> (logCollectionSize - log2(kv._2)))
 
@@ -201,6 +207,19 @@ object FeatureExtractor {
 
     val all_topics_sorted = topics.toList.sortWith(_._1 < _._1)
 
+    var all_queries_tokenized_porter_stemmer = Array[List[String]]()
+    var all_queries_tokenized = Array[List[String]]()
+
+    for (topic <- all_topics_sorted)
+      {
+        val qterms_tokenized = Tokenizer.tokenize(topic._2.toLowerCase)
+        val qterms_tokenized_porter_stemmer = qterms_tokenized.map(PorterStemmer.stem(_))
+
+        all_queries_tokenized = all_queries_tokenized.:+(qterms_tokenized)
+        all_queries_tokenized_porter_stemmer = all_queries_tokenized_porter_stemmer.:+(qterms_tokenized_porter_stemmer)
+      }
+
+
     for(doc <- docs)
       {
         if(documentCounter % 1000 == 0)
@@ -212,28 +231,36 @@ object FeatureExtractor {
         val doc_title = doc.title.toLowerCase.trim()
         val doc_name = doc.name.trim().replace("-","")
 
+        // no porter stemmer
+        val tfs_content: Map[String, Int] = Tokenizer.tokenize(doc_content).groupBy(identity).mapValues(l => l.length)
+        val doc_euclidean_length = tfs_content.values.map(x => x * x).sum.toDouble
+
+        // PorterStemmer only applied for title of document
+        val titleTerms = Tokenizer.tokenize(doc_title).map(PorterStemmer.stem(_))
+        val tfs_title: Map[String, Int] = titleTerms.groupBy(identity).mapValues(l => l.length)
+
         var topic_counter = -1
 
         for(topic <- all_topics_sorted)
           {
-            if(topic_counter <= 1) {
               topic_counter += 1
 
               val query_title = topic._2
 
-              val score1 = score_basic(query_title, doc_content)
+              val score1 = score_basic(all_queries_tokenized(topic_counter), doc_name, doc_euclidean_length)
+              //val score1 = (0,0)
+              val score2 = score_title(all_queries_tokenized_porter_stemmer(topic_counter), doc_title, tfs_title)
 
-              val score2 = score_title(query_title, doc_title)
+              val score3 = score_tf_idf(all_queries_tokenized(topic_counter), doc_content, doc_name, false)
 
-              val score3 = score_tf_idf(query_title, doc_content, doc_name, false)
 
-              val feature_array = Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4)
-              /*best1000FeaturesForRanking(topic_counter).enqueue(new FeatureArray(doc_name, feature_array))
+              val feature_array = Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, -100) // don't care about last number.. just for WEKA Library (relevance is placed in training vectors)
+              best1000FeaturesForRanking(topic_counter).enqueue(new FeatureArray(doc_name, feature_array))
 
-              if (best1000FeaturesForRanking(topic_counter).size == 1001) {
+              if (best1000FeaturesForRanking(topic_counter).size == 301) {
                 // keep only best 1000 features..
                 best1000FeaturesForRanking(topic_counter).dequeue()
-              }*/
+              }
 
               if (scoresCollectionSorted(qrel_counter)(0).toInt == (topic_counter + 51) && scoresCollectionSorted(qrel_counter)(2).replace("-", "").equals(doc_name)) {
                 // current query - document pair is in qrel
@@ -243,8 +270,8 @@ object FeatureExtractor {
                 labelsForTraining = relevance +: labelsForTraining // :+ relevance
 
                 qrel_counter += 1
+
               }
-            }
           }
 
       }
@@ -281,7 +308,7 @@ object FeatureExtractor {
 
     println("Frequencies computed...")
 
-    generalDocumentMapTermFrequency.foreach{ case p => println(); println(p._1); p._2.foreach{case m => println(m._1+ " " + m._2) } }
+    //generalDocumentMapTermFrequency.foreach{ case p => println(); println(p._1); p._2.foreach{case m => println(m._1+ " " + m._2) } }
 
 
     println("Processed documents for first time: " + documentCounter)
@@ -290,6 +317,7 @@ object FeatureExtractor {
 
 
     /************** SECOND PASS *************/
+
 
     tipster = new TipsterCorpusIterator(data_dir_path + "allZips")
 
