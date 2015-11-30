@@ -25,3 +25,4 @@ project/plugins/project/
 p2/data
 p2/src/main/scala/data
 p2/query*.txt
+p2/data_small
