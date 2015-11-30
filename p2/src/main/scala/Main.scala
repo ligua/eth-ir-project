@@ -81,6 +81,7 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     testStream()
+    //println(Classifier.eval_average_precision(List(1,2,3,4,5).map(x=>x.toString), List(6,4,7,1,2).map(x=>x.toString)))
   }
 
 }

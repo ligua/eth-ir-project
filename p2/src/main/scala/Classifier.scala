@@ -133,8 +133,12 @@ object Classifier {
         val currentPrecision = num_tp.toDouble / num_retrieved
         runningSum += currentPrecision
       }
+
+      val currentPrecision = num_tp.toDouble / num_retrieved
+      // println(s"precision@${num_retrieved}: ${currentPrecision}")
     }
 
+    // println(s"runningSum: $runningSum")
     return runningSum / groundTruth.size
   }
 
