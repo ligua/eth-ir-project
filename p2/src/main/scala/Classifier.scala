@@ -92,45 +92,18 @@ object Classifier {
     return (predictedLabels.reverse, predictedRelevancyProbability.reverse)
   }
 
-  def eval_precision_recall(trueLabels: Labels, predictedLabels: Labels): (Double, Double) = {
+  def eval_precision_recall_f1(groundTruth: Set[String], retrieved: Set[String]): (Double, Double, Double) = {
     /** Calculate precision and recall metrics. */
-    val tp = trueLabels.zip(predictedLabels).map(x => if(x._1 == x._2 && x._1 == 1) 1 else 0).sum           // TRUE POSITIVES
-    val fp = trueLabels.zip(predictedLabels).map(x => if(x._1 == 0 && x._2 == 1) 1 else 0).sum // FALSE POSITIVES
-    val fn = trueLabels.zip(predictedLabels).map(x => if(x._1 == 1 && x._2 == 0) 1 else 0).sum // FALSE NEGATIVES
+    val tp = groundTruth.intersect(retrieved).size
+    val fp = retrieved.size - tp
+    val fn = groundTruth.size - tp
 
     val precision = tp.toDouble / (tp + fp)
     val recall = tp.toDouble / (tp + fn)
+    val f1 = 2 * precision * recall / (precision + recall)
 
-    return (precision, recall)
+    return (precision, recall, f1)
   }
-
-  def eval_precision(groundTruth: Seq[String], retrieved: Seq[String]): Double = {
-    val number_relevant_retrieved = retrieved.filter(groundTruth.contains(_)).length
-
-    return number_relevant_retrieved.toDouble / retrieved.length
-  }
-
-  def eval_recall(groundTruth: Seq[String], retrieved: Seq[String]): Double = {
-    val number_relevant_retrieved = retrieved.filter(groundTruth.contains(_)).length
-
-    return number_relevant_retrieved.toDouble / groundTruth.length
-  }
-
-  def eval_f1score(precision: Double, recall: Double): Double = {
-
-    return 2 * precision * recall / (precision + recall)
-  }
-
-  /*
-  def eval_f1score(trueLabels: Labels, predictedLabels: Labels): Double = {
-    /** Calculate F1-score metric. */
-    val res = eval_precision_recall(trueLabels, predictedLabels)
-    val precision = res._1
-    val recall = res._2
-
-    return 2 * precision * recall / (precision + recall)
-  }
-  */
 
   def eval_average_precision(groundTruth: Seq[String], retrieved: Seq[String]): Double = {
     /** Calculate average precision for this topic. groundTruth are the true relevant documents, retrieved are documents
@@ -158,6 +131,7 @@ object Classifier {
 
     // println(s"runningSum: $runningSum")
     return runningSum / Math.min(100, groundTruth.size)
+
   }
 
 

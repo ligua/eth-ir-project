@@ -67,19 +67,23 @@ object Main {
         // Calculate Average Precision score and keep it
         val averageP = Classifier.eval_average_precision(groundTruth, resultList.map(x => x._1))
 
+        val scores = Classifier.eval_precision_recall_f1(groundTruth.toSet, resultList.map(x => x._1).toSet)
+
         writer_stats.println("Topic 51:")
         writer_stats.println("Average Precision = "+averageP)
-        writer_stats.println("Precision = "+Classifier.eval_precision(groundTruth, resultList.map(x => x._1)))
-        writer_stats.println("Recall = "+Classifier.eval_recall(groundTruth, resultList.map(x => x._1)))
-        writer_stats.println("Recall = "+Classifier.eval_recall(groundTruth, resultList.map(x => x._1)))
+        writer_stats.println("Precision = "+scores._1)
+        writer_stats.println("Recall = "+scores._2)
+        writer_stats.println("F1-score = "+scores._3)
 
         // println(s"Average precision for topic ${51 + topic_counter}: ${averageP}")
+        println(s"Topic ${51+topic_counter} precision: ${scores._1}, recall: ${scores._2}, F1: ${scores._3}")
         averagePs = averageP +: averagePs
 
         topic_counter += 1
       }
 
     writer.close()
+    writer_stats.close()
 
     // Calculate MAP (Mean Average Precision) score
     val MAP = averagePs.sum / averagePs.size
