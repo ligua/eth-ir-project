@@ -49,12 +49,11 @@ object Classifier {
     }
 
     println("Confusion matrix:")
-    val eval : Evaluation = new Evaluation(trainingInstances);
-    eval.crossValidateModel(forest, trainingInstances, 10, new Random(1));
+    val eval : Evaluation = new Evaluation(trainingInstances)
+    eval.crossValidateModel(forest, trainingInstances, 10, new Random(1))
     eval.confusionMatrix().foreach(_.foreach(println))
     println("Number of correctly classified samples")
     println(eval.correct())
-    //System.exit(0)
   }
 
   def predict(features: Features): (Labels, PredictedRelevancyProbability) = {
@@ -129,7 +128,6 @@ object Classifier {
       // println(s"precision@${num_retrieved}: ${currentPrecision}")
     }
 
-    // println(s"runningSum: $runningSum")
     return runningSum / Math.min(100, groundTruth.size)
 
   }
