@@ -228,19 +228,19 @@ object FeatureExtractor {
               val score3 = score_tf_idf(query_title, doc_content, doc_name, false)
 
               val feature_array = Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4)
-              best1000FeaturesForRanking(topic_counter).enqueue(new FeatureArray(doc_name, feature_array))
+              /*best1000FeaturesForRanking(topic_counter).enqueue(new FeatureArray(doc_name, feature_array))
 
               if (best1000FeaturesForRanking(topic_counter).size == 1001) {
                 // keep only best 1000 features..
                 best1000FeaturesForRanking(topic_counter).dequeue()
-              }
+              }*/
 
               if (scoresCollectionSorted(qrel_counter)(0).toInt == (topic_counter + 51) && scoresCollectionSorted(qrel_counter)(2).replace("-", "").equals(doc_name)) {
                 // current query - document pair is in qrel
                 val relevance = scoresCollectionSorted(qrel_counter)(3).toInt
 
-                featureVectorsUsedForTraining = featureVectorsUsedForTraining :+ Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance)
-                labelsForTraining = labelsForTraining :+ relevance
+                featureVectorsUsedForTraining = Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance) +: featureVectorsUsedForTraining // :+ Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance)
+                labelsForTraining = relevance +: labelsForTraining // :+ relevance
 
                 qrel_counter += 1
               }
