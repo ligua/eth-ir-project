@@ -11,9 +11,9 @@ Running: run ```sbt run``` in the root folder of the project.
 
 Data: the project root should contain a folder /data so that p2/data looks like:
 * p2/data
-  * zips/
-    * zips-1.zip
+  * allZips/
+    * ap880212.zip
     * ...
-    * zips-7.zip
+    * zf2_354.zip
   * qrels
   * topics
