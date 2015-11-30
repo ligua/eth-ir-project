@@ -40,6 +40,7 @@ object Main {
 
     println(s"F1 score: ${Classifier.eval_f1score(labelsForTraining, predictedLabels)}")
 
+    val writer = new PrintWriter(new File("term_based_model_top_100.txt" ))
 
     for(best1000FeatureForTopic <- FeatureExtractor.best1000FeaturesForRanking)
       {
@@ -48,15 +49,12 @@ object Main {
 
         val (predictedLabels, predictedRelevancyProbability) = Classifier.predict(tmpArrayOf1000BestFeatures)
 
-
-        val writer = new PrintWriter(new File("query"+(51 + topic_counter)+"_top_100.txt" ))
-
-        tmpDocumentNamesOf1000BestFeatures.zip(predictedRelevancyProbability).sortWith(_._2 > _._2).take(100).foreach(writer.println)
-
-        writer.close()
+        (tmpDocumentNamesOf1000BestFeatures.zip(predictedRelevancyProbability).sortWith(_._2 > _._2).map(d => d._1)).zipWithIndex.take(100).foreach(r => writer.println((51 + topic_counter)+" "+(r._2 + 1)+" "+r._1))
 
         topic_counter += 1
       }
+
+    writer.close()
   }
 
   def main(args: Array[String]): Unit = {
