@@ -48,11 +48,11 @@ object Classifier {
       case e: Exception => e.printStackTrace()
     }
 
-    println("hiii")
+    println("Confusion matrix:")
     val eval : Evaluation = new Evaluation(trainingInstances);
     eval.crossValidateModel(forest, trainingInstances, 10, new Random(1));
     eval.confusionMatrix().foreach(_.foreach(println))
-    println("hii")
+    println("Number of correctly classified samples")
     println(eval.correct())
     //System.exit(0)
   }

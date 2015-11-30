@@ -36,7 +36,7 @@ object Main {
 
     val (predictedLabels, predictedRelevancyProbability) = Classifier.predict(featuresForTraining)
 
-    labelsForTraining.zip(predictedLabels).foreach(kv => println(s"true\t${kv._1}, predicted\t${kv._2}"))
+    //labelsForTraining.zip(predictedLabels).foreach(kv => println(s"true\t${kv._1}, predicted\t${kv._2}"))
 
     //println(s"F1 score: ${Classifier.eval_f1score(labelsForTraining, predictedLabels)}")
 

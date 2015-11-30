@@ -339,6 +339,8 @@ object FeatureExtractor {
 
     /****************** FIRST PASS **********/
 
+    println("Started first pass.")
+
     documentsInTrainingSet = scoresCollection.map(x => (x.split(" ").toList)(2).replace("-", "")).distinct.toSet
 
     topics.foreach(t => queryTerms ++= Tokenizer.tokenize(t._2).distinct.filter(!StopWords.stopWords.contains(_)))
@@ -360,6 +362,8 @@ object FeatureExtractor {
 
 
     /************** SECOND PASS *************/
+
+    println("Started second pass.")
 
     tipster = new TipsterCorpusIterator(data_dir_path + "allZips")
 
