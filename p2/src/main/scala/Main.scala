@@ -38,10 +38,11 @@ object Main {
 
     labelsForTraining.zip(predictedLabels).foreach(kv => println(s"true\t${kv._1}, predicted\t${kv._2}"))
 
-    println(s"F1 score: ${Classifier.eval_f1score(labelsForTraining, predictedLabels)}")
+    //println(s"F1 score: ${Classifier.eval_f1score(labelsForTraining, predictedLabels)}")
 
 
     val writer = new PrintWriter(new File("term_based_model_top_100.txt" ))
+    val writer_stats = new PrintWriter(new File("statistics_for_term_based_model.txt" ))
 
     var averagePs = List[Double]()
 
@@ -65,7 +66,15 @@ object Main {
 
         // Calculate Average Precision score and keep it
         val averageP = Classifier.eval_average_precision(groundTruth, resultList.map(x => x._1))
+
         val scores = Classifier.eval_precision_recall_f1(groundTruth.toSet, resultList.map(x => x._1).toSet)
+
+        writer_stats.println("Topic 51:")
+        writer_stats.println("Average Precision = "+averageP)
+        writer_stats.println("Precision = "+scores._1)
+        writer_stats.println("Recall = "+scores._2)
+        writer_stats.println("F1-score = "+scores._3)
+
         // println(s"Average precision for topic ${51 + topic_counter}: ${averageP}")
         println(s"Topic ${51+topic_counter} precision: ${scores._1}, recall: ${scores._2}, F1: ${scores._3}")
         averagePs = averageP +: averagePs
@@ -74,6 +83,7 @@ object Main {
       }
 
     writer.close()
+    writer_stats.close()
 
     // Calculate MAP (Mean Average Precision) score
     val MAP = averagePs.sum / averagePs.size

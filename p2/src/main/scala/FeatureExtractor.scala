@@ -306,7 +306,7 @@ object FeatureExtractor {
           }
 
       }
-
+      println("qrels retrieved from qrel file: "+qrel_counter)
   }
 
 
