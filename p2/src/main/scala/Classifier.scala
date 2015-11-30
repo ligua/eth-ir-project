@@ -104,7 +104,24 @@ object Classifier {
     return (precision, recall)
   }
 
+  def eval_precision(groundTruth: Seq[String], retrieved: Seq[String]): Double = {
+    val number_relevant_retrieved = retrieved.filter(groundTruth.contains(_)).length
 
+    return number_relevant_retrieved.toDouble / retrieved.length
+  }
+
+  def eval_recall(groundTruth: Seq[String], retrieved: Seq[String]): Double = {
+    val number_relevant_retrieved = retrieved.filter(groundTruth.contains(_)).length
+
+    return number_relevant_retrieved.toDouble / groundTruth.length
+  }
+
+  def eval_f1score(precision: Double, recall: Double): Double = {
+
+    return 2 * precision * recall / (precision + recall)
+  }
+
+  /*
   def eval_f1score(trueLabels: Labels, predictedLabels: Labels): Double = {
     /** Calculate F1-score metric. */
     val res = eval_precision_recall(trueLabels, predictedLabels)
@@ -113,6 +130,7 @@ object Classifier {
 
     return 2 * precision * recall / (precision + recall)
   }
+  */
 
   def eval_average_precision(groundTruth: Seq[String], retrieved: Seq[String]): Double = {
     /** Calculate average precision for this topic. groundTruth are the true relevant documents, retrieved are documents
@@ -139,7 +157,7 @@ object Classifier {
     }
 
     // println(s"runningSum: $runningSum")
-    return runningSum / groundTruth.size
+    return runningSum / Math.min(100, groundTruth.size)
   }
 
 
