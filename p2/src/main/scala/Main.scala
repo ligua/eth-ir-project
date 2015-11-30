@@ -65,7 +65,9 @@ object Main {
 
         // Calculate Average Precision score and keep it
         val averageP = Classifier.eval_average_precision(groundTruth, resultList.map(x => x._1))
+        val scores = Classifier.eval_precision_recall_f1(groundTruth.toSet, resultList.map(x => x._1).toSet)
         // println(s"Average precision for topic ${51 + topic_counter}: ${averageP}")
+        println(s"Topic ${51+topic_counter} precision: ${scores._1}, recall: ${scores._2}, F1: ${scores._3}")
         averagePs = averageP +: averagePs
 
         topic_counter += 1

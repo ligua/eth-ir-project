@@ -104,7 +104,6 @@ object Classifier {
     return (precision, recall)
   }
 
-
   def eval_f1score(trueLabels: Labels, predictedLabels: Labels): Double = {
     /** Calculate F1-score metric. */
     val res = eval_precision_recall(trueLabels, predictedLabels)
@@ -112,6 +111,19 @@ object Classifier {
     val recall = res._2
 
     return 2 * precision * recall / (precision + recall)
+  }
+
+  def eval_precision_recall_f1(groundTruth: Set[String], retrieved: Set[String]): (Double, Double, Double) = {
+    /** Calculate precision and recall metrics. */
+    val tp = groundTruth.intersect(retrieved).size
+    val fp = retrieved.size - tp
+    val fn = groundTruth.size - tp
+
+    val precision = tp.toDouble / (tp + fp)
+    val recall = tp.toDouble / (tp + fn)
+    val f1 = 2 * precision * recall / (precision + recall)
+
+    return (precision, recall, f1)
   }
 
   def eval_average_precision(groundTruth: Seq[String], retrieved: Seq[String]): Double = {
@@ -139,7 +151,7 @@ object Classifier {
     }
 
     // println(s"runningSum: $runningSum")
-    return runningSum / groundTruth.size
+    return runningSum / 100
   }
 
 
