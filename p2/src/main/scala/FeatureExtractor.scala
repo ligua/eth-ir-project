@@ -29,6 +29,9 @@ object FeatureExtractor {
   var documentsInTrainingSet = Set[String]()
   var scoresCollectionSorted = List[List[String]]()
 
+  var documentQrelMap = MutMap[String, MutMap[Int, Int]]() // For each doc we have a map (topic -> relevance), e.g. (51 -> 1)
+
+
   // this map is used to keep the number of occurences of the query vocabulary in the document and keeps a map only
   // for the relevant documents
   val generalDocumentMapTermFrequency = MutMap[String, Map[String, Int]]()
@@ -206,7 +209,7 @@ object FeatureExtractor {
         best1000FeaturesForRanking = best1000FeaturesForRanking.+:(new mutable.PriorityQueue[FeatureArray]())
       }
 
-    var qrel_counter = 0
+    // var qrel_counter = 0
 
     documentCounter = 0
 
@@ -244,10 +247,24 @@ object FeatureExtractor {
         val titleTerms = Tokenizer.tokenize(doc_title).map(PorterStemmer.stem(_))
         val tfs_title: Map[String, Int] = titleTerms.groupBy(identity).mapValues(l => l.length)
 
+        //println(s"SECOND PASS: got ${scoresCollectionSorted.size} sorted qrels.")
+
+        /*
+        // Get all qrels for this document
+        val qrelMap = documentQrelMap(doc_name)
+        // Go through each qrel
+        for((topicID, relevancy) <- qrelMap) {
+          val score1 = score_basic(all_queries_tokenized(topicID - 51), doc_name, doc_euclidean_length)
+          val score2 = score_title(all_queries_tokenized_porter_stemmer(topicID - 51), doc_title, tfs_title)
+          val score3 = score_tf_idf(all_queries_tokenized(topicID - 51), doc_content, doc_name, false)
+
+        }*/
+
+
         var topic_counter = -1
 
-        var current_doc_name_in_qrel = scoresCollectionSorted(qrel_counter)(2).replace("-", "")
-        var current_topic_in_qrel = scoresCollectionSorted(qrel_counter)(0).toInt
+        // var current_doc_name_in_qrel = scoresCollectionSorted(qrel_counter)(2).replace("-", "")
+        // var current_topic_in_qrel = scoresCollectionSorted(qrel_counter)(0).toInt
 
         for(topic <- all_topics_sorted)
           {
@@ -272,18 +289,19 @@ object FeatureExtractor {
 
 
 
-              if (current_topic_in_qrel == (topic_counter + 51) && current_doc_name_in_qrel.equals(doc_name)) {
+              //if (current_topic_in_qrel == (topic_counter + 51) && current_doc_name_in_qrel.equals(doc_name)) {
+              if (documentQrelMap.contains(doc_name) && documentQrelMap(doc_name).contains(topic_counter + 51)) {
 
                 // current query - document pair is in qrel
-                val relevance = scoresCollectionSorted(qrel_counter)(3).toInt
+                val relevance = documentQrelMap(doc_name)(topic_counter + 51)
 
                 featureVectorsUsedForTraining = Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance) +: featureVectorsUsedForTraining // :+ Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance)
                 labelsForTraining = relevance +: labelsForTraining // :+ relevance
 
-                qrel_counter += 1
+                // qrel_counter += 1
 
-                current_doc_name_in_qrel = scoresCollectionSorted(qrel_counter)(2).replace("-", "")
-                current_topic_in_qrel = scoresCollectionSorted(qrel_counter)(0).toInt
+                // current_doc_name_in_qrel = scoresCollectionSorted(qrel_counter)(2).replace("-", "")
+                // current_topic_in_qrel = scoresCollectionSorted(qrel_counter)(0).toInt
               }
           }
 
@@ -300,6 +318,18 @@ object FeatureExtractor {
     val topicsCollection: List[String] = io.Source.fromFile(data_dir_path + "topics").getLines().toList
     val scoresCollection: List[String] = io.Source.fromFile(data_dir_path + "qrels").getLines().toList
     val topics = MutMap[Int, String]()
+
+    // Fill doc-qrel map
+    for(rowString <- scoresCollection) {
+      val row = rowString.split(" ").toList
+      val docID = row(2).replace("-", "")
+      val topicID = row(0).toInt
+      val relevancy = row(3).toInt
+
+      val docMap = documentQrelMap.getOrElse(docID, MutMap[Int, Int]())
+      docMap(topicID) = relevancy
+      documentQrelMap(docID) = docMap
+    }
 
     // Create map 'topic number -> topic title'
     topicsCollection.filter(p => p.startsWith("<num>")).foreach(f => topics +=
