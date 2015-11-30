@@ -27,6 +27,7 @@ object FeatureExtractor {
   var documentCounter = 0
 
   var documentsInTrainingSet = Set[String]()
+  var scoresCollectionSorted = List[List[String]]()
 
   // this map is used to keep the number of occurences of the query vocabulary in the document and keeps a map only
   // for the relevant documents
@@ -276,8 +277,8 @@ object FeatureExtractor {
                 // current query - document pair is in qrel
                 val relevance = scoresCollectionSorted(qrel_counter)(3).toInt
 
-                featureVectorsUsedForTraining = Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance) +: featureVectorsUsedForTraining
-                labelsForTraining =  relevance +: labelsForTraining
+                featureVectorsUsedForTraining = Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance) +: featureVectorsUsedForTraining // :+ Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance)
+                labelsForTraining = relevance +: labelsForTraining // :+ relevance
 
                 qrel_counter += 1
 
@@ -332,7 +333,7 @@ object FeatureExtractor {
 
     tipster = new TipsterCorpusIterator(data_dir_path + "allZips")
 
-    val scoresCollectionSorted = scoresCollection.map(s => s.split(" ").toList.map(e => e.replace("-", ""))).sortWith(_(2) < _(2))
+    scoresCollectionSorted = scoresCollection.map(s => s.split(" ").toList.map(e => e.replace("-", ""))).sortWith(_(2) < _(2))
 
     second_pass(tipster, topics, scoresCollectionSorted)
 

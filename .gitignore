@@ -24,3 +24,4 @@ project/plugins/project/
 # Project 2 data
 p2/data
 p2/src/main/scala/data
+p2/query*.txt
