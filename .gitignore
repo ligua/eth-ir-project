@@ -26,4 +26,5 @@ p2/data
 p2/src/main/scala/data
 p2/query*.txt
 p2/data_small
-p2/term_based_model_top_100.txt
+p2/top_100*.txt
+p2/statistics*.txt
