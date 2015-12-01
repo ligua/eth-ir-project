@@ -189,24 +189,26 @@ object FeatureExtractor {
   }
   def getLanguageModelScore(queryTerms: MutSet[String], docLength: Int, docId: String): Double = {
     /** Find the language model score of given document for given query. */
-    var logProbabilityOfQuery = 0.0
     val lambda = 0.5
 
-    val docTermFreq = generalDocumentMapTermFrequency.get(docId).get
+    var logProbabilityOfQuery = log2(lambda)
 
+    val docTermFreq = generalDocumentMapTermFrequency.get(docId).get
 
 
     for(term <- queryTerms.filter(term => docTermFreq.getOrElse(term, 0) > 0)) {
       val countOfTermInDocument = docTermFreq.getOrElse(term, 0)
 
-      val probabilityOfTermInDocument = countOfTermInDocument / docLength
-      val probabilityOfTermInCollection = cf(term) / countTotalTermsInAllDocs
+      val probabilityOfTermInDocument = countOfTermInDocument.toDouble / docLength
+      val probabilityOfTermInCollection = cf(term).toDouble / countTotalTermsInAllDocs
 
       val logProbabilityOfTerm =
-        log2(1 + (1-lambda)/lambda * probabilityOfTermInDocument.toDouble / probabilityOfTermInCollection) + log2(lambda)
+        log2(1 + (1-lambda).toDouble/lambda * probabilityOfTermInDocument.toDouble / probabilityOfTermInCollection)
 
       logProbabilityOfQuery += logProbabilityOfTerm
     }
+
+    println(logProbabilityOfQuery)
 
     return logProbabilityOfQuery
   }
