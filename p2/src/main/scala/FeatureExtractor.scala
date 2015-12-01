@@ -184,12 +184,12 @@ object FeatureExtractor {
   }
   implicit def orderedNode(idfResult: LanguageModelResult) = new Ordered[LanguageModelResult] {
     def compare(other: LanguageModelResult) = {
-      idfResult.relevancy.compare(other.relevancy)
+      -1 * idfResult.relevancy.compare(other.relevancy)
     }
   }
   def getLanguageModelScore(queryTerms: MutSet[String], docLength: Int, docId: String): Double = {
     /** Find the language model score of given document for given query. */
-    val lambda = 0.5
+    val lambda = 0.2
 
     var logProbabilityOfQuery = log2(lambda)
 
@@ -207,8 +207,6 @@ object FeatureExtractor {
 
       logProbabilityOfQuery += logProbabilityOfTerm
     }
-
-    println(logProbabilityOfQuery)
 
     return logProbabilityOfQuery
   }
@@ -364,7 +362,7 @@ object FeatureExtractor {
 
     println(queryTerms)
 
-    var tipster = new TipsterCorpusIterator(data_dir_path + "allZips").take(10000)
+    var tipster = new TipsterCorpusIterator(data_dir_path + "allZips").take(30000)
 
     get_doc_frequency(tipster)
 
@@ -379,7 +377,7 @@ object FeatureExtractor {
 
     println("Started second pass.")
 
-    tipster = new TipsterCorpusIterator(data_dir_path + "allZips").take(10000)
+    tipster = new TipsterCorpusIterator(data_dir_path + "allZips").take(30000)
 
     scoresCollectionSorted = scoresCollection.map(s => s.split(" ").toList.map(e => e.replace("-", ""))).sortWith(_(2) < _(2))
 
