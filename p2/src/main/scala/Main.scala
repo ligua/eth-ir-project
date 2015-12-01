@@ -68,6 +68,7 @@ object Main {
 
         // Language model scoring
         val resultList2 = FeatureExtractor.languageModelResultLists(topic_counter+51).toList.map(lmr => lmr.correspondingDoc)
+        println(s"resultlist2 size: ${resultList2.size}")
         val averageP2: Double = Classifier.eval_average_precision(groundTruth, resultList2)
         val scores2 = Classifier.eval_precision_recall_f1(groundTruth.toSet, resultList2.toSet)
         write_stats_to_file(writer_stats2, 51+topic_counter, averageP2, scores2)
