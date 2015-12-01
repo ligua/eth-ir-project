@@ -29,9 +29,10 @@ object Main {
     var topic_counter = 0
 
     // Initialise file writers for log/debug purposes
-    val writer = new PrintWriter(new File("term_based_model_top_100.txt" ))
-    val writer_stats = new PrintWriter(new File("statistics_for_term_based_model.txt" ))
-    val writer_stats2 = new PrintWriter(new File("statistics_for_language_model.txt" ))
+    val writer = new PrintWriter(new File("top_100_term_based.txt" ))
+    val writer2 = new PrintWriter(new File("top_100_language_based.txt" ))
+    val writer_stats = new PrintWriter(new File("statistics_term_based.txt" ))
+    val writer_stats2 = new PrintWriter(new File("statistics_language_based.txt" ))
 
     var averagePs = List[Double]()
     var averagePs2 = List[Double]()
@@ -82,6 +83,9 @@ object Main {
         write_stats_to_file(writer_stats2, 51+topic_counter, averageP2, scores2)
         // println(s"Topic ${51+topic_counter} precision: ${scores2._1}, recall: ${scores2._2}, F1: ${scores2._3}, average p: $averageP2")
         averagePs2 = averageP2 +: averagePs2
+
+        // Write results to file
+        resultList2.zipWithIndex.foreach(kv => writer2.println(s"${topic_counter+51} ${kv._2} ${kv._1}"))
         /******************************************************************************************/
 
 
@@ -91,7 +95,7 @@ object Main {
     writer.close()
     writer_stats.close()
 
-
+    writer2.close()
     writer_stats2.close()
 
     // Calculate MAP (Mean Average Precision) score
