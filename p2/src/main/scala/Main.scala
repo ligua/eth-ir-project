@@ -79,6 +79,7 @@ object Main {
 
     writer.close()
     writer_stats.close()
+    writer_stats2.close()
 
     // Calculate MAP (Mean Average Precision) score
     val MAP = averagePs.sum / averagePs.size
