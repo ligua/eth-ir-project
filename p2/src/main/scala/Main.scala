@@ -46,6 +46,8 @@ object Main {
 
     var averagePs = List[Double]()
 
+    /********** Prediction and printing out of the term-based model ***************/
+
     for(best1000FeatureForTopic <- FeatureExtractor.best1000FeaturesForRanking)
       {
         val tmpArrayOf1000BestFeatures = best1000FeatureForTopic.toArray.map(p => p.featureArray)
@@ -69,7 +71,7 @@ object Main {
 
         val scores = Classifier.eval_precision_recall_f1(groundTruth.toSet, resultList.map(x => x._1).toSet)
 
-        writer_stats.println("Topic 51:")
+        writer_stats.println("Topic "+(51 + topic_counter)+":")
         writer_stats.println("Average Precision = "+averageP)
         writer_stats.println("Precision = "+scores._1)
         writer_stats.println("Recall = "+scores._2)
@@ -84,6 +86,17 @@ object Main {
 
     writer.close()
     writer_stats.close()
+    /******************************************************************************************/
+
+    /***********************************    Language model     ********************************/
+
+
+
+
+
+
+
+
 
     // Calculate MAP (Mean Average Precision) score
     val MAP = averagePs.sum / averagePs.size
