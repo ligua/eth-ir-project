@@ -247,6 +247,9 @@ object FeatureExtractor {
       }
 
 
+    var qrel_used_for_training_counter = 0
+    var qrel_counter = 0
+
     for(doc <- docs)
       {
         if(documentCounter % 1000 == 0)
@@ -277,7 +280,7 @@ object FeatureExtractor {
               val query_title = topic._2
 
               val score1 = score_basic(all_queries_tokenized(topic_counter), doc_name, doc_euclidean_length)
-              //val score1 = (0,0)
+
               val score2 = score_title(all_queries_tokenized_porter_stemmer(topic_counter), doc_title, tfs_title)
 
               val score3 = score_tf_idf(all_queries_tokenized(topic_counter), doc_content, doc_name, false)
@@ -300,19 +303,25 @@ object FeatureExtractor {
               }
 
 
-
-              //if (current_topic_in_qrel == (topic_counter + 51) && current_doc_name_in_qrel.equals(doc_name)) {
               if (documentQrelMap.contains(doc_name) && documentQrelMap(doc_name).contains(topic_counter + 51)) {
 
-                // current query - document pair is in qrel
-                val relevance = documentQrelMap(doc_name)(topic_counter + 51)
+                if(topic_counter + 51 <= 80) { // hold out qrels for last ten topics to simulate what happens with unseen data
+                  // current query - document pair is in qrel
+                  val relevance = documentQrelMap(doc_name)(topic_counter + 51)
 
-                featureVectorsUsedForTraining = Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance) +: featureVectorsUsedForTraining // :+ Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance)
-                labelsForTraining = relevance +: labelsForTraining // :+ relevance
+                  featureVectorsUsedForTraining = Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance) +: featureVectorsUsedForTraining // :+ Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance)
+                  labelsForTraining = relevance +: labelsForTraining // :+ relevance
+
+                  qrel_used_for_training_counter += 1
+                }
+                qrel_counter += 1
               }
           }
 
       }
+
+      println("qrels retrieved from qrel file: "+qrel_counter)
+      println("qrels used for training - (excluded last 10 topics): "+qrel_used_for_training_counter)
   }
 
 
@@ -358,9 +367,6 @@ object FeatureExtractor {
     get_doc_frequency(tipster)
 
     println("Frequencies computed...")
-
-    //generalDocumentMapTermFrequency.foreach{ case p => println(); println(p._1); p._2.foreach{case m => println(m._1+ " " + m._2) } }
-
 
     println("Processed documents for first time: " + documentCounter)
 

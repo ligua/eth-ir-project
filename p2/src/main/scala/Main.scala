@@ -39,6 +39,7 @@ object Main {
     // Get ranking results and calculate how good our system is
     for(best1000FeatureForTopic <- FeatureExtractor.best1000FeaturesForRanking)
       {
+        /********** Prediction and printing out of the term-based model ***************/
         val tmpArrayOf1000BestFeatures = best1000FeatureForTopic.toArray.map(p => p.featureArray)
         val tmpDocumentNamesOf1000BestFeatures = best1000FeatureForTopic.toArray.map(p => p.correspondingDoc)
 
@@ -62,9 +63,16 @@ object Main {
         // Machine learning model scoring
         val averageP: Double = Classifier.eval_average_precision(groundTruth, resultList.map(x => x._1))
         val scores = Classifier.eval_precision_recall_f1(groundTruth.toSet, resultList.map(x => x._1).toSet)
+
         write_stats_to_file(writer_stats, 51+topic_counter, averageP, scores)
         println(s"Topic ${51+topic_counter} precision: ${scores._1}, recall: ${scores._2}, F1: ${scores._3}, average p: $averageP")
+
         averagePs = averageP +: averagePs
+        /******************************************************************************************/
+
+
+
+        /***********************************    Language model     ********************************/
 
         // Language model scoring
         val resultList2 = FeatureExtractor.languageModelResultLists(topic_counter+51).toList.map(lmr => lmr.correspondingDoc)
@@ -74,12 +82,16 @@ object Main {
         write_stats_to_file(writer_stats2, 51+topic_counter, averageP2, scores2)
         // println(s"Topic ${51+topic_counter} precision: ${scores2._1}, recall: ${scores2._2}, F1: ${scores2._3}, average p: $averageP2")
         averagePs2 = averageP2 +: averagePs2
+        /******************************************************************************************/
+
 
         topic_counter += 1
       }
 
     writer.close()
     writer_stats.close()
+
+
     writer_stats2.close()
 
     // Calculate MAP (Mean Average Precision) score
