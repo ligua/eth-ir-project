@@ -187,18 +187,21 @@ object FeatureExtractor {
       idfResult.relevancy.compare(other.relevancy)
     }
   }
-  def getLanguageModelScore(queryTerms: MutSet[String], docContent: String): Double = {
+  def getLanguageModelScore(queryTerms: MutSet[String], docLength: Int, docId: String): Double = {
     /** Find the language model score of given document for given query. */
     var logProbabilityOfQuery = 0.0
     val lambda = 0.5
 
-    val docTokenized = Tokenizer.tokenize(docContent)
-    val overlappingTerms = queryTerms.intersect(docTokenized.toSet)
+    val docTermFreq = generalDocumentMapTermFrequency.get(docId).get
 
-    for(term <- overlappingTerms) {
-      val countOfTermInDocument = docTokenized.filter(_ == term).size
-      val probabilityOfTermInDocument = countOfTermInDocument / docTokenized.size
+
+
+    for(term <- queryTerms.filter(term => docTermFreq.getOrElse(term, 0) > 0)) {
+      val countOfTermInDocument = docTermFreq.getOrElse(term, 0)
+
+      val probabilityOfTermInDocument = countOfTermInDocument / docLength
       val probabilityOfTermInCollection = cf(term) / countTotalTermsInAllDocs
+
       val logProbabilityOfTerm =
         log2(1 + (1-lambda)/lambda * probabilityOfTermInDocument.toDouble / probabilityOfTermInCollection) + log2(lambda)
 
@@ -257,9 +260,10 @@ object FeatureExtractor {
         val doc_content = doc.content.toLowerCase.trim()
         val doc_title = doc.title.toLowerCase.trim()
         val doc_name = doc.name.trim().replace("-","")
+        val doc_tokenized = Tokenizer.tokenize(doc_content)
 
         // no porter stemmer
-        val tfs_content: Map[String, Int] = Tokenizer.tokenize(doc_content).groupBy(identity).mapValues(l => l.length)
+        val tfs_content: Map[String, Int] = doc_tokenized.groupBy(identity).mapValues(l => l.length)
         val doc_euclidean_length = tfs_content.values.map(x => x * x).sum.toDouble
 
         // PorterStemmer only applied for title of document
@@ -291,7 +295,7 @@ object FeatureExtractor {
               }
 
               // Language model: update result list
-              val languageModelScore = getLanguageModelScore(queryTerms, doc_content) // TODO
+              val languageModelScore = getLanguageModelScore(queryTerms, doc_tokenized.size, doc_name) // TODO
               languageModelResultLists(topic._1).enqueue(new LanguageModelResult(doc_name, languageModelScore))
               if(languageModelResultLists(topic._1).size > 100) {
                 // Make sure we keep only 100 top results
@@ -358,7 +362,7 @@ object FeatureExtractor {
 
     println(queryTerms)
 
-    var tipster = new TipsterCorpusIterator(data_dir_path + "allZips")
+    var tipster = new TipsterCorpusIterator(data_dir_path + "allZips").take(10000)
 
     get_doc_frequency(tipster)
 
@@ -373,7 +377,7 @@ object FeatureExtractor {
 
     println("Started second pass.")
 
-    tipster = new TipsterCorpusIterator(data_dir_path + "allZips")
+    tipster = new TipsterCorpusIterator(data_dir_path + "allZips").take(10000)
 
     scoresCollectionSorted = scoresCollection.map(s => s.split(" ").toList.map(e => e.replace("-", ""))).sortWith(_(2) < _(2))
 
