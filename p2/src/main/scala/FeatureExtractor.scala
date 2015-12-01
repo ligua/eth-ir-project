@@ -61,7 +61,6 @@ object FeatureExtractor {
 
   def logtf(tf: Map[String, Int]): Map[String, Double] = {
     val sum = tf.values.sum.toDouble
-    //val sum = generalDocumentLength.get(docName).get
     tf.mapValues(v => log2((v.toDouble + 1.0) / sum))
   }
 
@@ -69,14 +68,11 @@ object FeatureExtractor {
 
 
     var qterms = query_tokenized.filter(!stopWords.contains(_))
-    //val dterms = Tokenizer.tokenize(doc.toLowerCase)
 
     if (pstemmer) {
       qterms = qterms.map(PorterStemmer.stem(_))
-      //dterms = dterms.map(PorterStemmer.stem(_))
     }
 
-    //def tf(doc: List[String]): Map[String, Int] = doc.groupBy(identity).mapValues(l => l.length)
     def tf(docName: String): Map[String, Int] = generalDocumentMapTermFrequency.get(docName).get
     def tf_2(docName: String): Map[String, Int] = generalDocumentMapTermFrequency_2.get(docName).get
     def tf_5(docName: String): Map[String, Int] = generalDocumentMapTermFrequency_5.get(docName).get
@@ -89,23 +85,9 @@ object FeatureExtractor {
     var ltf_2 = Map[String, Double]()
     var ltf_5 = Map[String, Double]()
 
-    /*
-    qterms.map(q => ltf += q -> logtf(tf(dterms)).getOrElse(q, 0))
-    qterms.map(q => ltf_2 += q -> logtf(tf(dterms.take(dterms.size / 2))).getOrElse(q, 0))
-    qterms.map(q => ltf_5 += q -> logtf(tf(dterms.take(dterms.size / 5))).getOrElse(q, 0))
-    */
-
-    /*
-    qterms.map(q => ltf += q -> logtf(tf(docName)).getOrElse(q, 0))
-    qterms.map(q => ltf_2 += q -> logtf(tf_2(docName)).getOrElse(q, 0))
-    qterms.map(q => ltf_5 += q -> logtf(tf_5(docName)).getOrElse(q, 0))
-    */
-
     qterms.map(q => ltf += q -> logtf(docName).getOrElse(q, 0))
     qterms.map(q => ltf_2 += q -> logtf_2(docName).getOrElse(q, 0))
     qterms.map(q => ltf_5 += q -> logtf_5(docName).getOrElse(q, 0))
-
-
 
     val score1 = -1 * qterms.flatMap(q => ltf.get(q)).sum
 
@@ -179,10 +161,6 @@ object FeatureExtractor {
     val logCollectionSize = log2(collectionSize)
 
     df.foreach(kv => idf += kv._1 -> (logCollectionSize - log2(kv._2)))
-
-    /*for (doc <- docs)
-      df_stem ++= Tokenizer.tokenize(doc._2.content.toLowerCase.trim()).map(PorterStemmer.stem(_)).distinct.map(t => t -> (1 + df_stem.getOrElse(t, 0)))
-    df_stem.foreach(kv => idf_stem += kv._1 -> (logCollectionSize - log2(kv._2)))*/
   }
 
 
@@ -249,9 +227,6 @@ object FeatureExtractor {
         languageModelResultLists(i + 51) = new mutable.PriorityQueue[LanguageModelResult]()
       }
 
-    // var qrel_counter = 0
-
-
     documentCounter = 0
 
     val all_topics_sorted = topics.toList.sortWith(_._1 < _._1)
@@ -288,24 +263,8 @@ object FeatureExtractor {
         val titleTerms = Tokenizer.tokenize(doc_title).map(PorterStemmer.stem(_))
         val tfs_title: Map[String, Int] = titleTerms.groupBy(identity).mapValues(l => l.length)
 
-        //println(s"SECOND PASS: got ${scoresCollectionSorted.size} sorted qrels.")
-
-        /*
-        // Get all qrels for this document
-        val qrelMap = documentQrelMap(doc_name)
-        // Go through each qrel
-        for((topicID, relevancy) <- qrelMap) {
-          val score1 = score_basic(all_queries_tokenized(topicID - 51), doc_name, doc_euclidean_length)
-          val score2 = score_title(all_queries_tokenized_porter_stemmer(topicID - 51), doc_title, tfs_title)
-          val score3 = score_tf_idf(all_queries_tokenized(topicID - 51), doc_content, doc_name, false)
-
-        }*/
-
 
         var topic_counter = -1
-
-        // var current_doc_name_in_qrel = scoresCollectionSorted(qrel_counter)(2).replace("-", "")
-        // var current_topic_in_qrel = scoresCollectionSorted(qrel_counter)(0).toInt
 
         for(topic <- all_topics_sorted)
           {
@@ -346,16 +305,10 @@ object FeatureExtractor {
 
                 featureVectorsUsedForTraining = Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance) +: featureVectorsUsedForTraining // :+ Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, relevance)
                 labelsForTraining = relevance +: labelsForTraining // :+ relevance
-
-                // qrel_counter += 1
-
-                // current_doc_name_in_qrel = scoresCollectionSorted(qrel_counter)(2).replace("-", "")
-                // current_topic_in_qrel = scoresCollectionSorted(qrel_counter)(0).toInt
               }
           }
 
       }
-      //println("qrels retrieved from qrel file: "+qrel_counter)
   }
 
 
