@@ -85,7 +85,7 @@ object Main {
         averagePs2 = averageP2 +: averagePs2
 
         // Write results to file
-        resultList2.zipWithIndex.foreach(kv => writer2.println(s"${topic_counter+51} ${kv._2} ${kv._1}"))
+        resultList2.zipWithIndex.foreach(kv => writer2.println(s"${topic_counter+51} ${kv._2+1} ${kv._1}"))
         /******************************************************************************************/
 
 
