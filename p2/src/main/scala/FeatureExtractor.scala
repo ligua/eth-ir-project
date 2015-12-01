@@ -187,7 +187,7 @@ object FeatureExtractor {
       -1 * idfResult.relevancy.compare(other.relevancy)
     }
   }
-  def getLanguageModelScore(queryTerms: MutSet[String], docLength: Int, docId: String): Double = {
+  def getLanguageModelScore(queryTerms: List[String], docLength: Int, docId: String): Double = {
     /** Find the language model score of given document for given query. */
     val lambda = 0.2
 
@@ -277,8 +277,6 @@ object FeatureExtractor {
           {
               topic_counter += 1
 
-              val query_title = topic._2
-
               val score1 = score_basic(all_queries_tokenized(topic_counter), doc_name, doc_euclidean_length)
 
               val score2 = score_title(all_queries_tokenized_porter_stemmer(topic_counter), doc_title, tfs_title)
@@ -295,7 +293,7 @@ object FeatureExtractor {
               }
 
               // Language model: update result list
-              val languageModelScore = getLanguageModelScore(queryTerms, doc_tokenized.size, doc_name) // TODO
+              val languageModelScore = getLanguageModelScore(all_queries_tokenized(topic_counter), doc_tokenized.size, doc_name) // TODO
               languageModelResultLists(topic._1).enqueue(new LanguageModelResult(doc_name, languageModelScore))
               if(languageModelResultLists(topic._1).size > 100) {
                 // Make sure we keep only 100 top results
@@ -362,7 +360,7 @@ object FeatureExtractor {
 
     println(queryTerms)
 
-    var tipster = new TipsterCorpusIterator(data_dir_path + "allZips").take(30000)
+    var tipster = new TipsterCorpusIterator(data_dir_path + "allZips").take(10000)
 
     get_doc_frequency(tipster)
 
@@ -377,7 +375,7 @@ object FeatureExtractor {
 
     println("Started second pass.")
 
-    tipster = new TipsterCorpusIterator(data_dir_path + "allZips").take(30000)
+    tipster = new TipsterCorpusIterator(data_dir_path + "allZips").take(10000)
 
     scoresCollectionSorted = scoresCollection.map(s => s.split(" ").toList.map(e => e.replace("-", ""))).sortWith(_(2) < _(2))
 
