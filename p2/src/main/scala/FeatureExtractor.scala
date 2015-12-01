@@ -8,6 +8,8 @@ import scala.collection.mutable.{Map => MutMap, Set => MutSet}
 
 object FeatureExtractor {
 
+  val mu_dirichlet = 500
+  val use_dirichlet = true
 
   val df = MutMap[String, Int]()
   val cf = MutMap[String, Int]()
@@ -28,6 +30,7 @@ object FeatureExtractor {
 
   var documentCounter = 0
 
+  var maxDocumentLength = 0 // for tuning the labda parameter
   var documentsInTrainingSet = Set[String]()
   var scoresCollectionSorted = List[List[String]]()
 
@@ -64,7 +67,7 @@ object FeatureExtractor {
     tf.mapValues(v => log2((v.toDouble + 1.0) / sum))
   }
 
-  def score_tf_idf(query_tokenized: List[String], doc: String, docName: String, pstemmer: Boolean) = {
+  def score_tf_idf(query_tokenized: List[String], docName: String, pstemmer: Boolean) = {
 
 
     var qterms = query_tokenized.filter(!stopWords.contains(_))
@@ -131,6 +134,8 @@ object FeatureExtractor {
       val dterms = Tokenizer.tokenize(currentDocument.content.toLowerCase.trim())
       countTotalTermsInAllDocs += dterms.size
 
+      maxDocumentLength = Math.max(maxDocumentLength, dterms.size)
+
       val allTokens = dterms
       val allTokens_2 = dterms.take(dterms.length/2)
       val allTokens_5 = dterms.take(dterms.length/5)
@@ -189,7 +194,7 @@ object FeatureExtractor {
   }
   def getLanguageModelScore(queryTerms: List[String], docLength: Int, docId: String): Double = {
     /** Find the language model score of given document for given query. */
-    val lambda = 0.2
+    val lambda = (1 - docLength*1.0 / (maxDocumentLength + 10)) * 0.5
 
     var logProbabilityOfQuery = log2(lambda)
 
@@ -206,6 +211,24 @@ object FeatureExtractor {
         log2(1 + (1-lambda).toDouble/lambda * probabilityOfTermInDocument.toDouble / probabilityOfTermInCollection)
 
       logProbabilityOfQuery += logProbabilityOfTerm
+    }
+
+    return logProbabilityOfQuery
+  }
+
+  def getLanguageModelScoreDirichlet(queryTerms: List[String], docLength: Int, docId: String, precomputedValue: Double): Double = {
+    /** Find the language model score of given document for given query. */
+
+    var logProbabilityOfQuery = - queryTerms.size * precomputedValue
+
+    val docTermFreq = generalDocumentMapTermFrequency.get(docId).get
+
+    for(term <- queryTerms) {
+      val countOfTermInDocument = docTermFreq.getOrElse(term, 0)
+
+      val probabilityOfTermInCollection = cf.getOrElse(term, 1).toDouble / countTotalTermsInAllDocs
+
+      logProbabilityOfQuery += log2(countOfTermInDocument + mu_dirichlet * probabilityOfTermInCollection)
     }
 
     return logProbabilityOfQuery
@@ -271,6 +294,9 @@ object FeatureExtractor {
         val tfs_title: Map[String, Int] = titleTerms.groupBy(identity).mapValues(l => l.length)
 
 
+        // Dirichlet parameter calculated here...
+        val precomputation_for_dirichlet = log2(doc_tokenized.size + mu_dirichlet)
+
         var topic_counter = -1
 
         for(topic <- all_topics_sorted)
@@ -281,7 +307,7 @@ object FeatureExtractor {
 
               val score2 = score_title(all_queries_tokenized_porter_stemmer(topic_counter), doc_title, tfs_title)
 
-              val score3 = score_tf_idf(all_queries_tokenized(topic_counter), doc_content, doc_name, false)
+              val score3 = score_tf_idf(all_queries_tokenized(topic_counter), doc_name, false)
 
 
               val feature_array = Array(score1._1, score1._2, score2, score3._1, score3._2, score3._3, score3._4, -100) // don't care about last number.. just for WEKA Library (relevance is placed in training vectors)
@@ -293,11 +319,21 @@ object FeatureExtractor {
               }
 
               // Language model: update result list
-              val languageModelScore = getLanguageModelScore(all_queries_tokenized(topic_counter), doc_tokenized.size, doc_name) // TODO
+            if(!use_dirichlet) {
+              val languageModelScore = getLanguageModelScore(all_queries_tokenized(topic_counter), doc_tokenized.size, doc_name)
               languageModelResultLists(topic._1).enqueue(new LanguageModelResult(doc_name, languageModelScore))
-              if(languageModelResultLists(topic._1).size > 100) {
+              if (languageModelResultLists(topic._1).size > 100) {
                 // Make sure we keep only 100 top results
                 languageModelResultLists(topic._1).dequeue()
+              }
+            }
+            else {
+                val languageModelScore = getLanguageModelScoreDirichlet(all_queries_tokenized(topic_counter), doc_tokenized.size, doc_name, precomputation_for_dirichlet)
+                languageModelResultLists(topic._1).enqueue(new LanguageModelResult(doc_name, languageModelScore))
+                if (languageModelResultLists(topic._1).size > 100) {
+                  // Make sure we keep only 100 top results
+                  languageModelResultLists(topic._1).dequeue()
+                }
               }
 
 
@@ -360,7 +396,7 @@ object FeatureExtractor {
 
     println(queryTerms)
 
-    var tipster = new TipsterCorpusIterator(data_dir_path + "allZips").take(10000)
+    var tipster = new TipsterCorpusIterator(data_dir_path + "allZips").take(100000)
 
     get_doc_frequency(tipster)
 
@@ -375,7 +411,7 @@ object FeatureExtractor {
 
     println("Started second pass.")
 
-    tipster = new TipsterCorpusIterator(data_dir_path + "allZips").take(10000)
+    tipster = new TipsterCorpusIterator(data_dir_path + "allZips").take(100000)
 
     scoresCollectionSorted = scoresCollection.map(s => s.split(" ").toList.map(e => e.replace("-", ""))).sortWith(_(2) < _(2))
 
