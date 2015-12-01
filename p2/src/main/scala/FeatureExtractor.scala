@@ -16,6 +16,8 @@ object FeatureExtractor {
   val df_stem = MutMap[String, Int]()
   val idf_stem = MutMap[String, Double]()
 
+  var countTotalTermsInAllDocs = 0
+
   var collectionSize: Int = 0
 
   val stopWords = StopWords.stopWords
@@ -30,6 +32,8 @@ object FeatureExtractor {
   var scoresCollectionSorted = List[List[String]]()
 
   var documentQrelMap = MutMap[String, MutMap[Int, Int]]() // For each doc we have a map (topic -> relevance), e.g. (51 -> 1)
+
+  val languageModelResultLists = MutMap[Int, mutable.PriorityQueue[LanguageModelResult]]()
 
 
   // this map is used to keep the number of occurences of the query vocabulary in the document and keeps a map only
@@ -57,7 +61,6 @@ object FeatureExtractor {
 
   def logtf(tf: Map[String, Int]): Map[String, Double] = {
     val sum = tf.values.sum.toDouble
-    //val sum = generalDocumentLength.get(docName).get
     tf.mapValues(v => log2((v.toDouble + 1.0) / sum))
   }
 
@@ -65,14 +68,11 @@ object FeatureExtractor {
 
 
     var qterms = query_tokenized.filter(!stopWords.contains(_))
-    //val dterms = Tokenizer.tokenize(doc.toLowerCase)
 
     if (pstemmer) {
       qterms = qterms.map(PorterStemmer.stem(_))
-      //dterms = dterms.map(PorterStemmer.stem(_))
     }
 
-    //def tf(doc: List[String]): Map[String, Int] = doc.groupBy(identity).mapValues(l => l.length)
     def tf(docName: String): Map[String, Int] = generalDocumentMapTermFrequency.get(docName).get
     def tf_2(docName: String): Map[String, Int] = generalDocumentMapTermFrequency_2.get(docName).get
     def tf_5(docName: String): Map[String, Int] = generalDocumentMapTermFrequency_5.get(docName).get
@@ -88,8 +88,6 @@ object FeatureExtractor {
     qterms.map(q => ltf += q -> logtf(docName).getOrElse(q, 0))
     qterms.map(q => ltf_2 += q -> logtf_2(docName).getOrElse(q, 0))
     qterms.map(q => ltf_5 += q -> logtf_5(docName).getOrElse(q, 0))
-
-
 
     val score1 = -1 * qterms.flatMap(q => ltf.get(q)).sum
 
@@ -131,6 +129,7 @@ object FeatureExtractor {
       documentCounter += 1
 
       val dterms = Tokenizer.tokenize(currentDocument.content.toLowerCase.trim())
+      countTotalTermsInAllDocs += dterms.size
 
       val allTokens = dterms
       val allTokens_2 = dterms.take(dterms.length/2)
@@ -162,10 +161,6 @@ object FeatureExtractor {
     val logCollectionSize = log2(collectionSize)
 
     df.foreach(kv => idf += kv._1 -> (logCollectionSize - log2(kv._2)))
-
-    /*for (doc <- docs)
-      df_stem ++= Tokenizer.tokenize(doc._2.content.toLowerCase.trim()).map(PorterStemmer.stem(_)).distinct.map(t => t -> (1 + df_stem.getOrElse(t, 0)))
-    df_stem.foreach(kv => idf_stem += kv._1 -> (logCollectionSize - log2(kv._2)))*/
   }
 
 
@@ -183,6 +178,36 @@ object FeatureExtractor {
     }
   }
 
+  class LanguageModelResult(docName: String, score: Double) {
+    val correspondingDoc = docName
+    val relevancy = score
+  }
+  implicit def orderedNode(idfResult: LanguageModelResult) = new Ordered[LanguageModelResult] {
+    def compare(other: LanguageModelResult) = {
+      idfResult.relevancy.compare(other.relevancy)
+    }
+  }
+  def getLanguageModelScore(queryTerms: MutSet[String], docContent: String): Double = {
+    /** Find the language model score of given document for given query. */
+    var logProbabilityOfQuery = 0.0
+    val lambda = 0.5
+
+    val docTokenized = Tokenizer.tokenize(docContent)
+    val overlappingTerms = queryTerms.intersect(docTokenized.toSet)
+
+    for(term <- overlappingTerms) {
+      val countOfTermInDocument = docTokenized.filter(_ == term).size
+      val probabilityOfTermInDocument = countOfTermInDocument / docTokenized.size
+      val probabilityOfTermInCollection = cf(term) / countTotalTermsInAllDocs
+      val logProbabilityOfTerm =
+        log2(1 + (1-lambda)/lambda * probabilityOfTermInDocument.toDouble / probabilityOfTermInCollection) + log2(lambda)
+
+      logProbabilityOfQuery += logProbabilityOfTerm
+    }
+
+    return logProbabilityOfQuery
+  }
+
   var best1000FeaturesForRanking = List[mutable.PriorityQueue[FeatureArray]]() // based on tf-idf
 
   var featureVectorsUsedForTraining = Array[Array[Double]]()
@@ -192,13 +217,15 @@ object FeatureExtractor {
   {
     val numOfTopics = 40
 
+    // Initialise top-lists of results (both for language model and for machine learning model)
     for(i <- 0 to numOfTopics - 1)
       {
+        // Candidates for machine learning model
         best1000FeaturesForRanking = best1000FeaturesForRanking.+:(new mutable.PriorityQueue[FeatureArray]())
-      }
 
-    var qrel_counter = 0
-    var qrel_used_for_training_counter = 0
+        // Best results from language model
+        languageModelResultLists(i + 51) = new mutable.PriorityQueue[LanguageModelResult]()
+      }
 
     documentCounter = 0
 
@@ -216,6 +243,9 @@ object FeatureExtractor {
         all_queries_tokenized_porter_stemmer = all_queries_tokenized_porter_stemmer.:+(qterms_tokenized_porter_stemmer)
       }
 
+
+    var qrel_used_for_training_counter = 0
+    var qrel_counter = 0
 
     for(doc <- docs)
       {
@@ -235,6 +265,7 @@ object FeatureExtractor {
         // PorterStemmer only applied for title of document
         val titleTerms = Tokenizer.tokenize(doc_title).map(PorterStemmer.stem(_))
         val tfs_title: Map[String, Int] = titleTerms.groupBy(identity).mapValues(l => l.length)
+
 
         var topic_counter = -1
 
@@ -259,6 +290,14 @@ object FeatureExtractor {
                 best1000FeaturesForRanking(topic_counter).dequeue()
               }
 
+              // Language model: update result list
+              val languageModelScore = getLanguageModelScore(queryTerms, doc_content) // TODO
+              languageModelResultLists(topic._1).enqueue(new LanguageModelResult(doc_name, languageModelScore))
+              if(languageModelResultLists(topic._1).size > 100) {
+                // Make sure we keep only 100 top results
+                languageModelResultLists(topic._1).dequeue()
+              }
+
 
               if (documentQrelMap.contains(doc_name) && documentQrelMap(doc_name).contains(topic_counter + 51)) {
 
@@ -272,11 +311,11 @@ object FeatureExtractor {
                   qrel_used_for_training_counter += 1
                 }
                 qrel_counter += 1
-
               }
           }
 
       }
+
       println("qrels retrieved from qrel file: "+qrel_counter)
       println("qrels used for training - (excluded last 10 topics): "+qrel_used_for_training_counter)
   }
