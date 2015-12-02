@@ -1,5 +1,5 @@
 # Change the folder name to get stats files from a different folder
-folder=Dirichlet_24percent_12percent
+folder=Dirichlet_Augment_14%_24_5%_NO_porter
 
 cd $folder
 
