@@ -1,12 +1,12 @@
 package main.scala
 
-import _root_.ch.ethz.dal.tinyir.processing.{TipsterCorpusIterator, StopWords, Tokenizer, XMLDocument}
+import _root_.ch.ethz.dal.tinyir.processing.{StopWords, TipsterCorpusIterator, Tokenizer, XMLDocument}
 import _root_.com.github.aztek.porterstemmer.PorterStemmer
 import main.scala.Main._
 import scala.collection.mutable
 import scala.collection.mutable.{Map => MutMap, Set => MutSet}
 
-object FeatureExtractor {
+object FeatureExtractorPorterStemmer {
 
   val mu_dirichlet = 1500
   val use_dirichlet = true
@@ -131,7 +131,7 @@ object FeatureExtractor {
 
       documentCounter += 1
 
-      val dterms = Tokenizer.tokenize(currentDocument.content.toLowerCase.trim())
+      val dterms = Tokenizer.tokenize(currentDocument.content.toLowerCase.trim()).map(PorterStemmer.stem(_))
 
       countTotalTermsInAllDocs += dterms.size
 
@@ -242,7 +242,7 @@ object FeatureExtractor {
 
   def second_pass(docs: Iterator[XMLDocument], topics: MutMap[Int, String], scoresCollectionSorted: List[List[String]]) =
   {
-    val numOfTopics = topics.size
+    val numOfTopics = 40
 
     // Initialise top-lists of results (both for language model and for machine learning model)
     for(i <- 0 to numOfTopics - 1)
@@ -266,7 +266,7 @@ object FeatureExtractor {
         val qterms_tokenized = Tokenizer.tokenize(topic._2.toLowerCase)
         val qterms_tokenized_porter_stemmer = qterms_tokenized.map(PorterStemmer.stem(_))
 
-        all_queries_tokenized = all_queries_tokenized.:+(qterms_tokenized)
+        all_queries_tokenized = all_queries_tokenized.:+(qterms_tokenized_porter_stemmer) // make everyting porter stemmer....
         all_queries_tokenized_porter_stemmer = all_queries_tokenized_porter_stemmer.:+(qterms_tokenized_porter_stemmer)
       }
 
@@ -285,6 +285,7 @@ object FeatureExtractor {
         val doc_title = doc.title.toLowerCase.trim()
         val doc_name = doc.name.trim().replace("-","")
         val doc_tokenized = Tokenizer.tokenize(doc_content)
+        val doc_size = doc_tokenized.size
 
         // no porter stemmer
         val tfs_content: Map[String, Int] = doc_tokenized.groupBy(identity).mapValues(l => l.length)
@@ -321,7 +322,7 @@ object FeatureExtractor {
 
               // Language model: update result list
             if(!use_dirichlet) {
-              val languageModelScore = getLanguageModelScore(all_queries_tokenized(topic_counter), doc_tokenized.size, doc_name)
+              val languageModelScore = getLanguageModelScore(all_queries_tokenized(topic_counter), doc_size, doc_name)
               languageModelResultLists(topic._1).enqueue(new LanguageModelResult(doc_name, languageModelScore))
               if (languageModelResultLists(topic._1).size > 100) {
                 // Make sure we keep only 100 top results
@@ -329,7 +330,7 @@ object FeatureExtractor {
               }
             }
             else {
-                val languageModelScore = getLanguageModelScoreDirichlet(all_queries_tokenized(topic_counter), doc_tokenized.size, doc_name, precomputation_for_dirichlet)
+                val languageModelScore = getLanguageModelScoreDirichlet(all_queries_tokenized(topic_counter), doc_size, doc_name, precomputation_for_dirichlet)
                 languageModelResultLists(topic._1).enqueue(new LanguageModelResult(doc_name, languageModelScore))
                 if (languageModelResultLists(topic._1).size > 100) {
                   // Make sure we keep only 100 top results
@@ -365,7 +366,7 @@ object FeatureExtractor {
     val data_dir_path = "data/"
 
     // Load dataset of training topics and scores
-    val topicsCollection: List[String] = io.Source.fromFile(data_dir_path + "topics-final").getLines().toList
+    val topicsCollection: List[String] = io.Source.fromFile(data_dir_path + "topics").getLines().toList
     val scoresCollection: List[String] = io.Source.fromFile(data_dir_path + "qrels").getLines().toList
     val topics = MutMap[Int, String]()
 
@@ -383,10 +384,9 @@ object FeatureExtractor {
 
     // Create map 'topic number -> topic title'
     topicsCollection.filter(p => p.startsWith("<num>")).foreach(f => topics +=
-      topicsCollection(topicsCollection.indexOf(f)).replace(" ", "").takeRight(3).toInt -> topicsCollection(topicsCollection.indexOf(f) + 6)
+      topicsCollection(topicsCollection.indexOf(f)).replace(" ", "").takeRight(2).toInt -> topicsCollection(topicsCollection.indexOf(f) + 6)
         .replace("<title>", "").replace("Topic:", "").toLowerCase.trim())
 
-    topics.foreach(println)
 
     /****************** FIRST PASS **********/
 
@@ -394,10 +394,11 @@ object FeatureExtractor {
 
     documentsInTrainingSet = scoresCollection.map(x => (x.split(" ").toList)(2).replace("-", "")).distinct.toSet
 
-    topics.foreach(t => queryTerms ++= Tokenizer.tokenize(t._2).distinct.filter(!StopWords.stopWords.contains(_)))
+    topics.foreach(t => queryTerms ++= Tokenizer.tokenize(t._2).distinct.filter(!StopWords.stopWords.contains(_))
+                                      .map(PorterStemmer.stem(_)))
 
     println(queryTerms)
-
+    
     var tipster = new TipsterCorpusIterator(data_dir_path + "allZips")
 
     get_doc_frequency(tipster)
