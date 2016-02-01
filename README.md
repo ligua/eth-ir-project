@@ -1,5 +1,7 @@
-# IR project group 21
-ETH Zürich [Information Retrieval](http://www.da.inf.ethz.ch/teaching/2015/Information-Retrieval)
+# Course projects in Information Retrieval
+2015 Autumn, ETH Zürich
+
+[Course website](http://www.da.inf.ethz.ch/teaching/2015/Information-Retrieval)
 
 ## Project 1: [web crawling](http://www.da.inf.ethz.ch/teaching/2015/Information-Retrieval/assignment1.php)
 Running: run ```sbt run``` in the root folder of the project.
